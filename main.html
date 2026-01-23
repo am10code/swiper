@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Todo Расширение</title>
+  <link rel="stylesheet" href="popup/popup.css">
+  <style>
+    html, body {
+      width: 100%;
+      height: 100vh;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+    body {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0;
+      background: #f5f5f5;
+      display: flex;
+      flex-direction: column;
+    }
+    .container {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: white;
+      width: 100%;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <button id="burgerMenuBtn" class="burger-menu-btn" title="Меню">☰</button>
+      <h1>Мои Задачи</h1>
+      <button id="settingsBtn" class="settings-btn" title="Настройки">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" width="20" height="20">
+          <path style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;" d="M46.999,27.708v-5.5l-6.546-1.07c-0.388-1.55-0.996-3.007-1.798-4.342l3.815-5.437L38.58,7.472l-5.368,3.859c-1.338-0.81-2.805-1.428-4.366-1.817L27.706,3h-5.5l-1.06,6.492c-1.562,0.383-3.037,0.993-4.379,1.799l-5.352-3.824l-3.889,3.887l3.765,5.384c-0.814,1.347-1.433,2.82-1.826,4.392l-6.464,1.076v5.5l6.457,1.145c0.39,1.568,1.009,3.041,1.826,4.391l-3.816,5.337l3.887,3.891l5.391-3.776c1.346,0.808,2.817,1.423,4.379,1.808L22.206,47h5.5l1.156-6.513c1.554-0.394,3.022-1.013,4.355-1.824l5.428,3.809l3.888-3.891l-3.875-5.38c0.802-1.335,1.411-2.794,1.795-4.344L46.999,27.708z"/>
+          <circle style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;" cx="25" cy="25" r="7"/>
+        </svg>
+      </button>
+    </header>
+
+    <!-- Бургер-меню -->
+    <div id="burgerMenu" class="burger-menu" style="display: none;">
+      <div class="burger-menu-overlay"></div>
+      <div class="burger-menu-content">
+        <button class="burger-menu-item active" data-section="tasks">
+          <span>📋</span>
+          <span>Задачи</span>
+        </button>
+        <button class="burger-menu-item" data-section="search">
+          <span>🔍</span>
+          <span>Поиск</span>
+        </button>
+        <button class="burger-menu-item" data-section="completed">
+          <span>✅</span>
+          <span>Выполненные задачи</span>
+        </button>
+        <button class="burger-menu-item" data-section="swiper">
+          <span>💫</span>
+          <span>ТаскСвайпер</span>
+        </button>
+        <button class="burger-menu-item" data-section="frequently-postponed">
+          <span>⏰</span>
+          <span>Часто откладываемые</span>
+        </button>
+        <button class="burger-menu-item" data-section="settings">
+          <span>⚙️</span>
+          <span>Настройки</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Поиск и фильтры -->
+    <div class="search-section" id="searchSection" style="display: none;">
+      <h2 class="section-title">Поиск задач</h2>
+      <input type="text" id="searchInput" class="search-input" placeholder="Поиск задач...">
+      <div class="filters">
+        <select id="categoryFilter" class="filter-select">
+          <option value="">Все категории</option>
+        </select>
+        <select id="priorityFilter" class="filter-select">
+          <option value="">Все приоритеты</option>
+          <option value="high">Высокий</option>
+          <option value="medium">Обычный</option>
+        </select>
+      </div>
+      <!-- Результаты поиска будут добавлены динамически -->
+    </div>
+
+    <!-- Настройки -->
+    <div class="settings-section-page" id="settingsSection" style="display: none;">
+      <h2 class="section-title">Настройки</h2>
+      <div class="settings-section">
+        <h3 class="settings-section-title">Настройки помодоро</h3>
+        <div class="pomodoro-settings">
+          <label>
+            Интервал (мин):
+            <input type="number" id="pomodoroInterval" min="15" max="120" value="25" class="pomodoro-setting-input">
+          </label>
+          <label>
+            Короткий перерыв (мин):
+            <input type="number" id="pomodoroShortBreak" min="1" max="30" value="5" class="pomodoro-setting-input">
+          </label>
+          <label>
+            Длинный перерыв (мин):
+            <input type="number" id="pomodoroLongBreak" min="5" max="60" value="15" class="pomodoro-setting-input">
+          </label>
+          <label>
+            Длинный перерыв после:
+            <input type="number" id="pomodoroLongBreakAfter" min="2" max="10" value="4" class="pomodoro-setting-input">
+            сессий
+          </label>
+          <button id="pomodoroSaveSettingsBtn" class="btn-secondary pomodoro-save-btn">Сохранить настройки</button>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h3 class="settings-section-title">Импорт и экспорт задач</h3>
+        <div class="import-export-controls">
+          <button id="tasksExportBtn" class="btn-secondary">Экспорт</button>
+          <button id="tasksImportBtn" class="btn-secondary">Импорт</button>
+          <input type="file" id="tasksImportInput" accept=".swiper,.json" style="display: none;">
+        </div>
+        <p class="import-export-hint">Импорт перезапишет все существующие задачи.</p>
+      </div>
+      <div class="settings-section">
+        <h3 class="settings-section-title">Для разработчика</h3>
+        <div class="import-export-controls">
+          <button id="testNotificationBtn" class="btn-secondary">Тест уведомления</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Список активных задач -->
+    <div class="tasks-section" id="tasksSection">
+      <div class="tasks-section-content">
+        <!-- Просрочено -->
+        <div id="overdueTasksSection" class="tasks-subsection" style="display: none;">
+          <h3 class="subsection-title overdue-title">Просрочено</h3>
+          <div id="overdueTasksList" class="tasks-list">
+            <!-- Просроченные задачи будут добавлены динамически -->
+          </div>
+        </div>
+        <!-- Сегодня -->
+        <div id="todayTasksSection" class="tasks-subsection" style="display: none;">
+          <h3 class="subsection-title">Сегодня</h3>
+          <div id="todayTasksList" class="tasks-list">
+            <!-- Задачи на сегодня будут добавлены динамически -->
+          </div>
+        </div>
+        <!-- Позже -->
+        <div id="otherTasksSection" class="tasks-subsection" style="display: none;">
+          <h3 class="subsection-title">Позже</h3>
+          <div id="otherTasksList" class="tasks-list">
+            <!-- Остальные задачи будут добавлены динамически -->
+          </div>
+        </div>
+        <div id="emptyState" class="empty-state" style="display: none;">
+          <p>Нет активных задач. Добавьте первую задачу!</p>
+        </div>
+      </div>
+
+      <!-- Форма добавления задачи -->
+      <div class="add-task-section">
+        <form id="taskForm" class="task-form">
+          <div class="task-form-row">
+            <div class="task-input-wrapper">
+              <input 
+                type="text" 
+                id="taskInput" 
+                class="task-input" 
+                placeholder="Добавить новую задачу..."
+                required
+              >
+              <button type="button" id="toggleOptionsBtn" class="btn-toggle-options-icon-inline" title="Дополнительные параметры">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
+                  <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                    <line x1="4" y1="7" x2="12" y2="7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="4" y1="17" x2="6" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="18" y1="7" x2="20" y2="7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="13" y1="17" x2="20" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="15" cy="7" r="3" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <circle cx="9" cy="17" r="3" stroke="currentColor" stroke-width="2" fill="none"/>
+                  </g>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="task-options" id="taskOptions" style="display: none;">
+            <select id="categorySelect" class="option-select">
+              <option value="">Выберите категорию</option>
+            </select>
+            <select id="prioritySelect" class="option-select">
+              <option value="medium">Обычный</option>
+              <option value="high">Высокий</option>
+            </select>
+            <input 
+              type="date" 
+              id="deadlineInput" 
+              class="option-input"
+              placeholder="Дедлайн"
+            >
+            <button type="button" id="addCategoryBtn" class="btn-secondary" title="Добавить категорию">+</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Раздел выполненных задач -->
+    <div class="completed-section" id="completedSection" style="display: none;">
+      <h2 class="section-title">Выполненные задачи</h2>
+      <div id="completedTasksList" class="tasks-list completed-tasks-list">
+        <!-- Выполненные задачи будут добавлены динамически -->
+      </div>
+      <div id="completedEmptyState" class="empty-state" style="display: none;">
+        <p>Нет выполненных задач</p>
+      </div>
+    </div>
+
+    <!-- Раздел часто откладываемых задач -->
+    <div class="frequently-postponed-section" id="frequentlyPostponedSection" style="display: none;">
+      <h2 class="section-title">Часто откладываемые задачи</h2>
+      <div id="frequentlyPostponedList" class="tasks-list">
+        <!-- Задачи будут добавлены динамически -->
+      </div>
+      <div id="frequentlyPostponedEmptyState" class="empty-state" style="display: none;">
+        <p>Нет часто откладываемых задач</p>
+      </div>
+    </div>
+
+    <!-- Раздел ТаскСвайпер -->
+    <div class="swiper-section" id="swiperSection" style="display: none;">
+      <div class="swiper-header">
+        <div class="swiper-progress">
+          <div id="swiperCounter" class="progress-counter">0 / 0</div>
+        </div>
+      </div>
+      <div class="swiper-container">
+        <div id="swiperCardContainer" class="swiper-card-container">
+          <div class="swiper-side-action left">
+            <button id="postponeBtn" class="swiper-action-btn swiper-side-btn postpone-btn" title="Отложить">
+              <span>←</span>
+            </button>
+            <div class="swiper-side-label">Позже</div>
+          </div>
+          <!-- Карточки будут добавлены динамически -->
+          <div class="swiper-side-action right">
+            <button id="scheduleBtn" class="swiper-action-btn swiper-side-btn schedule-btn" title="Запланировать на сегодня">
+              <span>→</span>
+            </button>
+            <div class="swiper-side-label">На сегодня</div>
+          </div>
+        </div>
+        <div class="swiper-controls">
+          <div class="swiper-hint" id="swiperHint" style="display: none;">
+            ← Позже, → На сегодня
+          </div>
+          <div id="swiperEmptyState" class="empty-state" style="display: none;">
+            <h3>Все задачи обработаны</h3>
+            <p>Вы разобрали очередь задач. Можно вернуться к списку.</p>
+            <button type="button" id="swiperBackToTasksBtn" class="btn-primary">Вернуться к списку задач</button>
+          </div>
+        </div>
+      </div>
+      <div class="swiper-footer">
+        <div class="swiper-actions secondary-actions">
+          <button id="undoBtn" class="swiper-action-btn undo-btn" title="Отменить">
+            <span>↶</span>
+          </button>
+          <button id="editSwiperBtn" class="swiper-action-btn edit-btn" title="Редактировать">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 297.068 297.068" width="20" height="20">
+              <path style="fill:currentColor;" d="M288.758,46.999l-38.69-38.69c-5.347-5.354-12.455-8.303-20.02-8.303s-14.672,2.943-20.02,8.297L28.632,190.266L0,297.061l107.547-28.805L288.745,87.045c5.36-5.354,8.323-12.462,8.323-20.026S294.105,52.347,288.758,46.999z M43.478,193.583L180.71,55.823l60.554,60.541L103.761,253.866L43.478,193.583z M37.719,206.006l53.368,53.362l-42.404,11.35L26.35,248.384L37.719,206.006z M279.657,77.951l-19.493,19.505l-60.579-60.541l19.544-19.525c5.823-5.848,16.016-5.842,21.851,0l38.69,38.696c2.924,2.918,4.544,6.8,4.544,10.926C284.214,71.139,282.594,75.027,279.657,77.951z"/>
+            </svg>
+          </button>
+          <button id="deleteSwiperBtn" class="swiper-action-btn delete-btn" title="Удалить">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="20" height="20">
+              <g transform="translate(232, 228)">
+                <polygon style="fill:currentColor;" points="-207.5,-205.1 -204.5,-205.1 -204.5,-181.1 -207.5,-181.1"/>
+                <polygon style="fill:currentColor;" points="-201.5,-205.1 -198.5,-205.1 -198.5,-181.1 -201.5,-181.1"/>
+                <polygon style="fill:currentColor;" points="-195.5,-205.1 -192.5,-205.1 -192.5,-181.1 -195.5,-181.1"/>
+                <polygon style="fill:currentColor;" points="-219.5,-214.1 -180.5,-214.1 -180.5,-211.1 -219.5,-211.1"/>
+                <path style="fill:currentColor;" d="M-192.6-212.6h-2.8v-3c0-0.9-0.7-1.6-1.6-1.6h-6c-0.9,0-1.6,0.7-1.6,1.6v3h-2.8v-3c0-2.4,2-4.4,4.4-4.4h6c2.4,0,4.4,2,4.4,4.4V-212.6"/>
+                <path style="fill:currentColor;" d="M-191-172.1h-18c-2.4,0-4.5-2-4.7-4.4l-2.8-36l3-0.2l2.8,36c0.1,0.9,0.9,1.6,1.7,1.6h18c0.9,0,1.7-0.8,1.7-1.6l2.8-36l3,0.2l-2.8,36C-186.5-174-188.6-172.1-191-172.1"/>
+              </g>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Подтверждение удаления задачи (ТаскСвайпер) -->
+    <div id="swiperDeleteModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <h2>Удаление задачи</h2>
+        <p id="swiperDeleteMessage"></p>
+        <div class="modal-actions">
+          <button type="button" id="swiperDeleteCancelBtn" class="btn-secondary">Отмена</button>
+          <button type="button" id="swiperDeleteConfirmBtn" class="btn-danger">Удалить</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Модальное окно для редактирования -->
+    <div id="editModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2>Редактировать задачу</h2>
+        <form id="editForm">
+          <input type="text" id="editTaskInput" class="task-input" required>
+          <div class="task-options">
+            <select id="editCategorySelect" class="option-select"></select>
+            <select id="editPrioritySelect" class="option-select">
+              <option value="high">Высокий</option>
+              <option value="medium">Обычный</option>
+            </select>
+            <input type="date" id="editDeadlineInput" class="option-input">
+            <div class="deadline-quick-actions">
+              <button type="button" class="btn-secondary deadline-quick-btn" data-target="editDeadlineInput" data-offset="0">Сегодня</button>
+              <button type="button" class="btn-secondary deadline-quick-btn" data-target="editDeadlineInput" data-offset="1">Завтра</button>
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" id="cancelEdit" class="btn-secondary">Отмена</button>
+            <button type="submit" class="btn-primary">Сохранить</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Модальное окно для добавления категории -->
+    <div id="categoryModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <span class="close-category-modal">&times;</span>
+        <h2>Добавить категорию</h2>
+        <form id="categoryForm">
+          <input type="text" id="categoryNameInput" class="task-input" placeholder="Название категории" required>
+          <div class="modal-actions">
+            <button type="button" id="cancelCategory" class="btn-secondary">Отмена</button>
+            <button type="submit" class="btn-primary">Добавить</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Модальное окно настроек списка задач -->
+    <div id="taskSettingsModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <h2>Настройки списка задач</h2>
+        <div class="settings-section">
+          <h3 class="settings-section-title">Какие задачи показываем?</h3>
+          <div class="radio-group">
+            <label class="radio-option">
+              <input type="radio" name="taskDisplayMode" value="all" checked>
+              <span>Показывать все задачи</span>
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="taskDisplayMode" value="today">
+              <span>Показывать только сегодняшние задачи</span>
+            </label>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-primary" id="taskSettingsOkBtn">Ок</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Боковая панель с полной карточкой задачи -->
+    <div id="taskCardOverlay" class="task-card-overlay" style="display: none;"></div>
+    <div id="taskCardPanel" class="task-card-panel" style="display: none;">
+      <div class="task-card-content">
+        <!-- Шапка карточки -->
+        <div class="task-card-header modal-header">
+          <div class="task-card-title-section">
+            <h2 id="taskCardTitle" class="task-card-title"></h2>
+            <input id="taskCardTitleInput" class="task-card-title-input" type="text" style="display: none;">
+            <div class="task-card-meta" id="taskCardMeta"></div>
+          </div>
+          <button id="taskCardCloseBtn" class="task-card-close-btn" title="Закрыть (ESC)">&times;</button>
+        </div>
+
+        <div class="task-card-body modal-body">
+          <!-- Редактирование задачи -->
+          <div class="task-card-edit-section" id="taskCardEditSection" style="display: none;">
+            <input type="text" id="taskCardEditText" class="task-card-edit-input" placeholder="Текст задачи">
+            <div class="task-card-edit-options">
+              <select id="taskCardEditCategory" class="task-card-edit-select"></select>
+              <select id="taskCardEditPriority" class="task-card-edit-select">
+                <option value="high">Высокий</option>
+                <option value="medium">Обычный</option>
+              </select>
+              <input type="date" id="taskCardEditDeadline" class="task-card-edit-date">
+              <div class="deadline-quick-actions">
+                <button type="button" class="btn-secondary deadline-quick-btn" data-target="taskCardEditDeadline" data-offset="0">Сегодня</button>
+                <button type="button" class="btn-secondary deadline-quick-btn" data-target="taskCardEditDeadline" data-offset="1">Завтра</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="task-card-columns">
+          <!-- Следующие шаги -->
+          <div class="task-card-section task-card-column task-card-column-main">
+            <h3 class="task-card-section-title">Следующий шаг</h3>
+            <div class="next-steps-container">
+              <div class="next-steps-form">
+                <input type="text" id="nextStepInput" class="next-step-input" placeholder="Добавить следующий шаг...">
+                <button id="nextStepAddBtn" class="btn-secondary next-step-btn">Добавить шаг</button>
+              </div>
+              <div class="next-steps-empty-state" id="nextStepsEmptyState">
+                Добавьте 1–3 ближайших шага, чтобы начать работу
+              </div>
+              <div class="next-steps-list" id="nextStepsList">
+                <!-- Активные шаги -->
+                <div class="next-steps-active" id="nextStepsActive">
+                  <!-- Активные шаги будут добавлены динамически -->
+                </div>
+                <!-- Выполненные шаги -->
+                <div class="next-steps-completed" id="nextStepsCompleted" style="display: none;">
+                  <div class="next-steps-completed-header">
+                    <span id="nextStepsCompletedTitle">Выполнено (0)</span>
+                    <button type="button" id="nextStepsCompletedToggleBtn" class="btn-secondary next-steps-toggle-btn">Показать</button>
+                  </div>
+                  <div id="nextStepsCompletedBody" class="next-steps-completed-body">
+                    <div id="nextStepsCompletedList">
+                      <!-- Выполненные шаги будут добавлены динамически -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Помодоро-таймер -->
+          <div class="task-card-section task-card-column task-card-column-side">
+            <h3 class="task-card-section-title">Фокус</h3>
+            <div class="pomodoro-container">
+              <div class="pomodoro-timer-display">
+                <span id="pomodoroTimerDisplay">25:00</span>
+                <button id="pomodoroSoundToggleBtn" class="pomodoro-sound-toggle" type="button" title="Выключить звук" aria-label="Выключить фоновый звук">
+                  <img id="pomodoroSoundToggleIcon" src="assets/icons/icon-sound-mute.svg" alt="" aria-hidden="true">
+                </button>
+              </div>
+              <div class="pomodoro-controls">
+                <button id="pomodoroStartBtn" class="btn-primary pomodoro-btn pomodoro-btn-primary">Старт</button>
+                <button id="pomodoroPauseBtn" class="btn-secondary pomodoro-btn" style="display: none;">Пауза</button>
+                <button id="pomodoroStopBtn" class="btn-secondary pomodoro-btn" style="display: none;">Стоп</button>
+                <button id="pomodoroStartBreakBtn" class="btn-primary pomodoro-btn pomodoro-btn-primary" style="display: none;">Начать отдых</button>
+                <button id="pomodoroResetBtn" class="btn-secondary pomodoro-btn" style="display: none;">Сбросить таймер</button>
+              </div>
+              <div class="pomodoro-time-summary">
+                <span class="pomodoro-time-label">Время по задаче:</span>
+                <span id="totalTimeDisplay" class="pomodoro-time-value">00:00:00</span>
+              </div>
+              <div class="pomodoro-history" id="pomodoroHistory">
+                <div class="pomodoro-history-header">
+                  <span id="pomodoroHistoryTitle">История сессий (0)</span>
+                  <button type="button" id="pomodoroHistoryToggleBtn" class="btn-secondary pomodoro-history-toggle-btn">Показать</button>
+                </div>
+                <div id="pomodoroHistoryBody" class="pomodoro-history-body">
+                  <div id="pomodoroHistoryList"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          </div>
+
+          <!-- Лог задачи -->
+          <div class="task-card-section task-log-section">
+            <div class="task-log-header">
+              <h3 class="task-card-section-title">Лог</h3>
+              <button type="button" id="taskLogToggleBtn" class="btn-secondary task-log-toggle-btn">Показать</button>
+            </div>
+            <div class="task-log-body" id="taskLogBody">
+              <div class="task-log-container">
+                <div class="task-log-form">
+                  <textarea id="taskLogInput" class="task-log-input" placeholder="Добавить запись в лог..." rows="2"></textarea>
+                  <button id="taskLogAddBtn" class="btn-secondary task-log-btn">Добавить запись</button>
+                </div>
+                <div class="task-log-entries" id="taskLogEntries">
+                  <!-- Записи лога будут добавлены динамически -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Действия -->
+        <div class="task-card-actions-group modal-footer">
+          <div class="task-card-actions-secondary">
+            <button id="taskCardCompleteBtn" class="btn-secondary">Отметить задачу выполненной</button>
+            <button id="taskCardNextBtn" class="btn-primary">Перейти к следующей задаче</button>
+          </div>
+          <div class="task-card-actions">
+            <button id="taskCardMoreOptionsBtn" class="btn-secondary">Больше опций</button>
+          </div>
+        </div>
+        <div id="taskCardOptionsMenu" class="task-context-menu" style="display: none;">
+          <button id="taskCardOptionNextWeekBtn">Перенести на следующую неделю</button>
+          <button id="taskCardOptionEditBtn">Редактировать</button>
+          <button id="taskCardOptionDeleteBtn" class="danger">Удалить</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Подтверждение удаления задачи -->
+    <div id="taskDeleteModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <h2>Удаление задачи</h2>
+        <p id="taskDeleteMessage"></p>
+        <div class="modal-actions">
+          <button type="button" id="taskDeleteCancelBtn" class="btn-secondary">Отмена</button>
+          <button type="button" id="taskDeleteConfirmBtn" class="btn-danger">Удалить</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Подтверждение удаления задачи (ТаскСвайпер) -->
+    <div id="swiperDeleteModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <h2>Удаление задачи</h2>
+        <p id="swiperDeleteMessage"></p>
+        <div class="modal-actions">
+          <button type="button" id="swiperDeleteCancelBtn" class="btn-secondary">Отмена</button>
+          <button type="button" id="swiperDeleteConfirmBtn" class="btn-danger">Удалить</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Контекстное меню задачи -->
+    <div id="taskContextMenu" class="task-context-menu" style="display: none;">
+      <button type="button" id="taskContextTodayBtn">Перенести на сегодня</button>
+      <button type="button" id="taskContextOpenBtn">Открыть полную карточку задачи</button>
+      <button type="button" id="taskContextDeleteBtn" class="danger">Удалить</button>
+    </div>
+  </div>
+
+  <script src="popup/storage.js"></script>
+  <script src="popup/modules/import-export.js"></script>
+  <script src="popup/popup.js"></script>
+  <script src="popup/task-card.js"></script>
+  <script src="popup/modules/swiper/swiper.js"></script>
+  <script src="popup/modules/swiper/swiper-init.js"></script>
+</body>
+</html>
+
