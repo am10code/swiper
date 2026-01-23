@@ -13,7 +13,6 @@ let pendingDeleteTaskId = null;
 let isHistoryExpanded = false;
 let isCompletedExpanded = false;
 let isPomodoroStopping = false;
-let isTitleEditing = false;
 let pomodoroState = 'IDLE_POMODORO';
 let pomodoroRemainingSeconds = 0;
 let pomodoroIntervalId = null;
@@ -213,28 +212,6 @@ function setupTaskCardListeners() {
     await closeTaskCard();
   });
 
-  // Редактирование задачи через меню опций
-  const titleElement = document.getElementById('taskCardTitle');
-  const titleInput = document.getElementById('taskCardTitleInput');
-  if (titleElement && titleInput) {
-    titleElement.addEventListener('click', () => {
-      openTitleEditor();
-    });
-    titleInput.addEventListener('blur', () => {
-      saveTitleEditor();
-    });
-    titleInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        titleInput.blur();
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        cancelTitleEditor();
-      }
-    });
-  }
-  
   const moreOptionsBtn = document.getElementById('taskCardMoreOptionsBtn');
   const optionsMenu = document.getElementById('taskCardOptionsMenu');
   const optionNextWeekBtn = document.getElementById('taskCardOptionNextWeekBtn');
@@ -347,9 +324,9 @@ function setupTaskCardListeners() {
 
   // Сохранение редактирования задачи
   document.getElementById('taskCardEditText').addEventListener('blur', saveTaskEdit);
-  document.getElementById('taskCardEditCategory').addEventListener('change', saveTaskEdit);
   document.getElementById('taskCardEditPriority').addEventListener('change', saveTaskEdit);
   document.getElementById('taskCardEditDeadline').addEventListener('change', saveTaskEdit);
+  document.getElementById('taskCardEditLink').addEventListener('change', saveTaskEdit);
 
   document.querySelectorAll('.deadline-quick-btn[data-target="taskCardEditDeadline"]').forEach(button => {
     button.addEventListener('click', () => {
@@ -546,14 +523,8 @@ async function loadTaskCardData() {
 // Отображение информации о задаче
 function displayTaskInfo() {
   const titleElement = document.getElementById('taskCardTitle');
-  const titleInput = document.getElementById('taskCardTitleInput');
   if (titleElement) {
     titleElement.textContent = currentTask.text;
-    titleElement.style.display = isTitleEditing ? 'none' : 'block';
-  }
-  if (titleInput) {
-    titleInput.value = currentTask.text;
-    titleInput.style.display = isTitleEditing ? 'block' : 'none';
   }
   
   const meta = document.getElementById('taskCardMeta');
@@ -565,7 +536,7 @@ function displayTaskInfo() {
     categorySpan.textContent = currentTask.category;
     meta.appendChild(categorySpan);
   }
-  
+
   if (currentTask.priority) {
     const normalizedPriority = normalizePriority(currentTask.priority);
     const prioritySpan = document.createElement('span');
@@ -580,60 +551,16 @@ function displayTaskInfo() {
     deadlineSpan.textContent = formatDeadline(currentTask.deadline);
     meta.appendChild(deadlineSpan);
   }
-}
-
-function openTitleEditor() {
-  if (!currentTask) return;
-  const titleElement = document.getElementById('taskCardTitle');
-  const titleInput = document.getElementById('taskCardTitleInput');
-  if (!titleElement || !titleInput) return;
-  isTitleEditing = true;
-  titleElement.style.display = 'none';
-  titleInput.style.display = 'block';
-  titleInput.value = currentTask.text;
-  titleInput.focus();
-  const length = titleInput.value.length;
-  titleInput.setSelectionRange(length, length);
-}
-
-async function saveTitleEditor() {
-  if (!isTitleEditing) return;
-  const titleElement = document.getElementById('taskCardTitle');
-  const titleInput = document.getElementById('taskCardTitleInput');
-  if (!titleElement || !titleInput) return;
-  const nextTitle = titleInput.value.trim();
-  isTitleEditing = false;
-  titleInput.style.display = 'none';
-  titleElement.style.display = 'block';
-  if (!nextTitle || nextTitle === currentTask?.text) {
-    titleElement.textContent = currentTask?.text || '';
-    return;
+  const link = normalizeTaskLink(currentTask.link);
+  if (link) {
+    const linkAnchor = document.createElement('a');
+    linkAnchor.className = 'task-link';
+    linkAnchor.href = link;
+    linkAnchor.target = '_blank';
+    linkAnchor.rel = 'noopener noreferrer';
+    linkAnchor.textContent = link;
+    meta.appendChild(linkAnchor);
   }
-  try {
-    const storage = getStorage();
-    await storage.updateTask(currentTaskId, { text: nextTitle });
-    if (currentTask) {
-      currentTask = { ...currentTask, text: nextTitle };
-    }
-    titleElement.textContent = nextTitle;
-    if (typeof refreshTaskLists === 'function') {
-      await refreshTaskLists();
-    }
-  } catch (error) {
-    console.error('Ошибка при сохранении названия задачи:', error);
-    titleElement.textContent = currentTask?.text || '';
-  }
-}
-
-function cancelTitleEditor() {
-  if (!isTitleEditing) return;
-  const titleElement = document.getElementById('taskCardTitle');
-  const titleInput = document.getElementById('taskCardTitleInput');
-  if (!titleElement || !titleInput) return;
-  isTitleEditing = false;
-  titleInput.style.display = 'none';
-  titleElement.style.display = 'block';
-  titleElement.textContent = currentTask?.text || '';
 }
 
 function toggleTaskCardOptionsMenu(anchorElement) {
@@ -1145,7 +1072,7 @@ function displayLog(logEntries) {
     
     const textDiv = document.createElement('div');
     textDiv.className = 'task-log-entry-text';
-    textDiv.textContent = entry.text;
+    renderLogTextWithLinks(textDiv, entry.text);
     
     const timeDiv = document.createElement('div');
     timeDiv.className = 'task-log-entry-time';
@@ -1161,6 +1088,35 @@ function displayLog(logEntries) {
     setLogExpanded(true);
   } else {
     setLogExpanded(isLogExpanded);
+  }
+}
+
+function renderLogTextWithLinks(target, text) {
+  const safeText = String(text || '');
+  const urlRegex = /https?:\/\/[^\s]+/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = urlRegex.exec(safeText)) !== null) {
+    const { index } = match;
+    const url = match[0];
+
+    if (index > lastIndex) {
+      target.appendChild(document.createTextNode(safeText.slice(lastIndex, index)));
+    }
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.textContent = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    target.appendChild(link);
+
+    lastIndex = index + url.length;
+  }
+
+  if (lastIndex < safeText.length) {
+    target.appendChild(document.createTextNode(safeText.slice(lastIndex)));
   }
 }
 
@@ -1410,20 +1366,7 @@ async function toggleEditMode() {
     document.getElementById('taskCardEditText').value = currentTask.text;
     document.getElementById('taskCardEditPriority').value = normalizePriority(currentTask.priority);
     document.getElementById('taskCardEditDeadline').value = currentTask.deadline || '';
-    
-    // Загружаем категории
-    const categories = await storage.getCategories();
-    const categorySelect = document.getElementById('taskCardEditCategory');
-    categorySelect.innerHTML = '<option value="">Выберите категорию</option>';
-    categories.forEach(cat => {
-      const option = document.createElement('option');
-      option.value = cat;
-      option.textContent = cat;
-      if (cat === currentTask.category) {
-        option.selected = true;
-      }
-      categorySelect.appendChild(option);
-    });
+    document.getElementById('taskCardEditLink').value = currentTask.link || '';
   } else {
     editSection.style.display = 'none';
     if (editBtn) editBtn.textContent = 'Редактировать';
@@ -1437,10 +1380,16 @@ async function saveTaskEdit() {
   const storage = getStorage();
   const updates = {
     text: document.getElementById('taskCardEditText').value.trim(),
-    category: document.getElementById('taskCardEditCategory').value,
     priority: document.getElementById('taskCardEditPriority').value,
     deadline: document.getElementById('taskCardEditDeadline').value || null
   };
+  const linkInput = document.getElementById('taskCardEditLink');
+  const linkValue = linkInput ? linkInput.value.trim() : '';
+  if (linkValue && !isValidHttpUrl(linkValue)) {
+    alert('Ссылка должна быть валидным URL и начинаться с http:// или https://');
+    return;
+  }
+  updates.link = linkValue || null;
   
   if (!updates.text) {
     alert('Текст задачи не может быть пустым');
@@ -1459,6 +1408,20 @@ async function saveTaskEdit() {
   }
   if (typeof window.renderCompletedTasks === 'function') {
     window.renderCompletedTasks();
+  }
+}
+
+function normalizeTaskLink(link) {
+  const value = String(link || '').trim();
+  return value || null;
+}
+
+function isValidHttpUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch (error) {
+    return false;
   }
 }
 

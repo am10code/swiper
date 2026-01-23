@@ -1831,7 +1831,7 @@ body:has(.swiper-section[style*="block"]) .add-task-section {
 .task-card-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   padding: var(--spacing-xxl);
   padding-bottom: var(--spacing-lg);
   border-bottom: 1px solid var(--color-border-light);
@@ -1882,8 +1882,21 @@ body:has(.swiper-section[style*="block"]) .add-task-section {
   display: flex;
   gap: var(--spacing-md);
   flex-wrap: wrap;
+  align-items: baseline;
   font-size: 12px;
   color: var(--color-text-secondary);
+}
+
+.task-card-meta .task-link {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+.task-card-meta .task-deadline {
+  font-size: 12px;
+  line-height: 1.2;
 }
 
 .task-card-close-btn {

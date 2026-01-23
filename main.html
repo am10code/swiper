@@ -377,7 +377,6 @@
         <div class="task-card-header modal-header">
           <div class="task-card-title-section">
             <h2 id="taskCardTitle" class="task-card-title"></h2>
-            <input id="taskCardTitleInput" class="task-card-title-input" type="text" style="display: none;">
             <div class="task-card-meta" id="taskCardMeta"></div>
           </div>
           <button id="taskCardCloseBtn" class="task-card-close-btn" title="Закрыть (ESC)">&times;</button>
@@ -388,12 +387,12 @@
           <div class="task-card-edit-section" id="taskCardEditSection" style="display: none;">
             <input type="text" id="taskCardEditText" class="task-card-edit-input" placeholder="Текст задачи">
             <div class="task-card-edit-options">
-              <select id="taskCardEditCategory" class="task-card-edit-select"></select>
               <select id="taskCardEditPriority" class="task-card-edit-select">
                 <option value="high">Высокий</option>
                 <option value="medium">Обычный</option>
               </select>
               <input type="date" id="taskCardEditDeadline" class="task-card-edit-date">
+              <input type="url" id="taskCardEditLink" class="task-card-edit-input" placeholder="Ссылка (https://...)">
               <div class="deadline-quick-actions">
                 <button type="button" class="btn-secondary deadline-quick-btn" data-target="taskCardEditDeadline" data-offset="0">Сегодня</button>
                 <button type="button" class="btn-secondary deadline-quick-btn" data-target="taskCardEditDeadline" data-offset="1">Завтра</button>

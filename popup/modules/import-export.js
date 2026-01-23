@@ -56,16 +56,16 @@
         alert('Файл должен содержать массив задач.');
         return;
       }
-      const validation = validateImportedTasks(parsed);
-      if (!validation.ok) {
-        alert(`Файл сломан: ${validation.error}`);
+      const normalization = normalizeImportedTasks(parsed);
+      if (!normalization.ok) {
+        alert(`Файл сломан: ${normalization.error}`);
         return;
       }
 
       const confirmed = confirm('Импорт перезапишет все текущие задачи. Продолжить?');
       if (!confirmed) return;
 
-      await storage.saveTasks(parsed);
+      await storage.saveTasks(normalization.tasks);
       if (typeof onAfterImport === 'function') {
         await onAfterImport();
       }
@@ -76,115 +76,87 @@
     }
   }
 
-  function validateImportedTasks(tasks) {
-    const expectedKeys = [
-      'id',
-      'text',
-      'completed',
-      'category',
-      'priority',
-      'deadline',
-      'createdAt',
-      'updatedAt',
-      'postponeCount',
-      'lastPostponed',
-      'pomodoroSessions',
-      'totalTime',
-      'log',
-      'nextSteps',
-      'pomodoroSettings'
-    ];
-    const expectedKeySet = new Set(expectedKeys);
+  function normalizeImportedTasks(tasks) {
+    const now = Date.now();
+    const normalized = [];
 
     for (let i = 0; i < tasks.length; i += 1) {
       const task = tasks[i];
       if (!task || typeof task !== 'object' || Array.isArray(task)) {
         return { ok: false, error: `Задача #${i + 1} имеет неверный формат.` };
       }
-      const keys = Object.keys(task);
-      for (const key of keys) {
-        if (!expectedKeySet.has(key)) {
-          return { ok: false, error: `Лишнее поле "${key}" в задаче #${i + 1}.` };
-        }
-      }
-      for (const requiredKey of expectedKeys) {
-        if (!Object.prototype.hasOwnProperty.call(task, requiredKey)) {
-          return { ok: false, error: `Отсутствует поле "${requiredKey}" в задаче #${i + 1}.` };
-        }
-      }
-      if (typeof task.id !== 'string' || !task.id.trim()) {
-        return { ok: false, error: `Поле id в задаче #${i + 1} должно быть непустой строкой.` };
-      }
-      if (typeof task.text !== 'string' || !task.text.trim()) {
-        return { ok: false, error: `Поле text в задаче #${i + 1} должно быть непустой строкой.` };
-      }
-      if (typeof task.completed !== 'boolean') {
-        return { ok: false, error: `Поле completed в задаче #${i + 1} должно быть boolean.` };
-      }
-      if (typeof task.category !== 'string') {
-        return { ok: false, error: `Поле category в задаче #${i + 1} должно быть строкой.` };
-      }
-      if (typeof task.priority !== 'string') {
-        return { ok: false, error: `Поле priority в задаче #${i + 1} должно быть строкой.` };
-      }
-      if (task.deadline !== null && typeof task.deadline !== 'string') {
-        return { ok: false, error: `Поле deadline в задаче #${i + 1} должно быть строкой или null.` };
-      }
-      if (typeof task.createdAt !== 'number' || Number.isNaN(task.createdAt)) {
-        return { ok: false, error: `Поле createdAt в задаче #${i + 1} должно быть числом.` };
-      }
-      if (typeof task.updatedAt !== 'number' || Number.isNaN(task.updatedAt)) {
-        return { ok: false, error: `Поле updatedAt в задаче #${i + 1} должно быть числом.` };
-      }
-      if (typeof task.postponeCount !== 'number' || Number.isNaN(task.postponeCount)) {
-        return { ok: false, error: `Поле postponeCount в задаче #${i + 1} должно быть числом.` };
-      }
-      if (task.lastPostponed !== null && typeof task.lastPostponed !== 'number') {
-        return { ok: false, error: `Поле lastPostponed в задаче #${i + 1} должно быть числом или null.` };
-      }
-      if (!Array.isArray(task.pomodoroSessions)) {
-        return { ok: false, error: `Поле pomodoroSessions в задаче #${i + 1} должно быть массивом.` };
-      }
-      if (typeof task.totalTime !== 'number' || Number.isNaN(task.totalTime)) {
-        return { ok: false, error: `Поле totalTime в задаче #${i + 1} должно быть числом.` };
-      }
-      if (!Array.isArray(task.log)) {
-        return { ok: false, error: `Поле log в задаче #${i + 1} должно быть массивом.` };
-      }
-      if (!Array.isArray(task.nextSteps)) {
-        return { ok: false, error: `Поле nextSteps в задаче #${i + 1} должно быть массивом.` };
-      }
-      if (task.pomodoroSettings !== null && typeof task.pomodoroSettings !== 'object') {
-        return { ok: false, error: `Поле pomodoroSettings в задаче #${i + 1} должно быть объектом или null.` };
+
+      const text = typeof task.text === 'string' ? task.text.trim() : '';
+      if (!text) {
+        return { ok: false, error: `Отсутствует поле "text" в задаче #${i + 1}.` };
       }
 
-      const sessionsValidation = validatePomodoroSessions(task.pomodoroSessions, i + 1);
+      const id = typeof task.id === 'string' && task.id.trim()
+        ? task.id.trim()
+        : createTaskId();
+      const completed = typeof task.completed === 'boolean' ? task.completed : false;
+      const category = typeof task.category === 'string' ? task.category : '';
+      const priority = typeof task.priority === 'string' ? task.priority : 'medium';
+      const deadline = task.deadline === null || typeof task.deadline === 'string'
+        ? task.deadline
+        : null;
+      const createdAt = typeof task.createdAt === 'number' && !Number.isNaN(task.createdAt)
+        ? task.createdAt
+        : now;
+      const updatedAt = typeof task.updatedAt === 'number' && !Number.isNaN(task.updatedAt)
+        ? task.updatedAt
+        : createdAt;
+      const postponeCount = typeof task.postponeCount === 'number' && !Number.isNaN(task.postponeCount)
+        ? task.postponeCount
+        : 0;
+      const lastPostponed = task.lastPostponed === null || typeof task.lastPostponed === 'number'
+        ? task.lastPostponed
+        : null;
+      const pomodoroSessions = Array.isArray(task.pomodoroSessions) ? task.pomodoroSessions : [];
+      const totalTime = typeof task.totalTime === 'number' && !Number.isNaN(task.totalTime)
+        ? task.totalTime
+        : 0;
+      const log = Array.isArray(task.log) ? task.log : [];
+      const nextSteps = Array.isArray(task.nextSteps) ? task.nextSteps : [];
+      const pomodoroSettings = task.pomodoroSettings && typeof task.pomodoroSettings === 'object' && !Array.isArray(task.pomodoroSettings)
+        ? task.pomodoroSettings
+        : null;
+      const link = task.link === null || typeof task.link === 'string' ? task.link : null;
+
+      const sessionsValidation = validatePomodoroSessions(pomodoroSessions, i + 1);
       if (!sessionsValidation.ok) return sessionsValidation;
-      const logValidation = validateLogEntries(task.log, i + 1);
+      const logValidation = validateLogEntries(log, i + 1);
       if (!logValidation.ok) return logValidation;
-      const stepsValidation = validateNextSteps(task.nextSteps, i + 1);
+      const stepsValidation = validateNextSteps(nextSteps, i + 1);
       if (!stepsValidation.ok) return stepsValidation;
-      const settingsValidation = validatePomodoroSettings(task.pomodoroSettings, i + 1);
+      const settingsValidation = validatePomodoroSettings(pomodoroSettings, i + 1);
       if (!settingsValidation.ok) return settingsValidation;
+
+      normalized.push({
+        id,
+        text,
+        completed,
+        category,
+        priority,
+        deadline,
+        createdAt,
+        updatedAt,
+        postponeCount,
+        lastPostponed,
+        pomodoroSessions,
+        totalTime,
+        log,
+        nextSteps,
+        pomodoroSettings,
+        link
+      });
     }
 
-    return { ok: true };
+    return { ok: true, tasks: normalized };
   }
 
-  function validateKeys(obj, allowedKeys, requiredKeys) {
-    const keySet = new Set(allowedKeys);
-    const keys = Object.keys(obj);
-    for (const key of keys) {
-      if (!keySet.has(key)) {
-        return { ok: false, error: `Лишнее поле "${key}".` };
-      }
-    }
-    for (const requiredKey of requiredKeys) {
-      if (!Object.prototype.hasOwnProperty.call(obj, requiredKey)) {
-        return { ok: false, error: `Отсутствует поле "${requiredKey}".` };
-      }
-    }
-    return { ok: true };
+  function createTaskId() {
+    return Date.now().toString() + Math.random().toString(36).substr(2, 9);
   }
 
   function validatePomodoroSessions(sessions, taskIndex) {

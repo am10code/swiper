@@ -162,10 +162,11 @@
 **Шапка карточки**
 - `#taskCardTitle`, `#taskCardMeta`
 - Кнопка закрытия: `#taskCardCloseBtn` (×), также Esc и клик по overlay.
+  - В `#taskCardMeta` показывается ссылка задачи (если задана), правее дедлайна.
 
 **Редактирование в карточке**
 - `#taskCardEditSection`
-  - `#taskCardEditText`, `#taskCardEditCategory`, `#taskCardEditPriority` (Обычный/Высокий), `#taskCardEditDeadline`
+  - `#taskCardEditText`, `#taskCardEditPriority` (Обычный/Высокий), `#taskCardEditDeadline`, `#taskCardEditLink`
   - Быстрые кнопки дедлайна: `.deadline-quick-btn`
 
 **Две колонки**

@@ -58,7 +58,8 @@ class StorageManager {
               totalTime: task.totalTime || 0,
               log: task.log || [],
               nextSteps: task.nextSteps || [],
-              pomodoroSettings: task.pomodoroSettings !== undefined ? task.pomodoroSettings : null
+              pomodoroSettings: task.pomodoroSettings !== undefined ? task.pomodoroSettings : null,
+              link: task.link || null
             }));
           }
 
@@ -118,7 +119,8 @@ class StorageManager {
       totalTime: 0, // в секундах
       log: [],
       nextSteps: [],
-      pomodoroSettings: null // null означает использование глобальных настроек
+      pomodoroSettings: null, // null означает использование глобальных настроек
+      link: null
     };
     tasks.push(newTask);
     await this.saveTasks(tasks);
@@ -153,6 +155,9 @@ class StorageManager {
       }
       if (!task.hasOwnProperty('pomodoroSettings')) {
         task.pomodoroSettings = null;
+      }
+      if (!task.hasOwnProperty('link')) {
+        task.link = null;
       }
 
       tasks[index] = {
