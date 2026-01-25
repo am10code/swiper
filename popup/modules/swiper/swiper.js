@@ -697,13 +697,8 @@ function updateProgress() {
   // Прогресс показывает, сколько задач мы просмотрели (от 0% до 100%)
   const progress = total > 0 ? Math.min((currentPosition / total) * 100, 100) : 0;
   
-  const progressBar = document.getElementById('swiperProgressBar');
   const counter = document.getElementById('swiperCounter');
-  
-  if (progressBar) {
-    progressBar.style.width = `${progress}%`;
-  }
-  
+
   if (counter) {
     counter.textContent = `${currentPosition} / ${total}`;
   }
