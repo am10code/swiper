@@ -122,6 +122,12 @@
         ? task.pomodoroSettings
         : null;
       const link = task.link === null || typeof task.link === 'string' ? task.link : null;
+      const completedAt = task.completedAt === null || typeof task.completedAt === 'number'
+        ? task.completedAt
+        : null;
+      const swiperHiddenUntil = task.swiperHiddenUntil === null || typeof task.swiperHiddenUntil === 'number'
+        ? task.swiperHiddenUntil
+        : null;
 
       const sessionsValidation = validatePomodoroSessions(pomodoroSessions, i + 1);
       if (!sessionsValidation.ok) return sessionsValidation;
@@ -148,7 +154,9 @@
         log,
         nextSteps,
         pomodoroSettings,
-        link
+        link,
+        completedAt,
+        swiperHiddenUntil
       });
     }
 

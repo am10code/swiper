@@ -41,9 +41,12 @@ async function initSwiper() {
     const allTasks = await swiperStorage.getTasks();
     
     // Фильтруем активные задачи (все, кроме выполненных)
+    const now = Date.now();
     let activeTasks = allTasks.filter(task => {
       const isCompleted = task.completed === true || task.completed === 'true';
-      return !isCompleted;
+      const hiddenUntil = Number(task.swiperHiddenUntil || 0);
+      const isHidden = Number.isFinite(hiddenUntil) && hiddenUntil > now;
+      return !isCompleted && !isHidden;
     });
     
     if (activeTasks.length === 0) {

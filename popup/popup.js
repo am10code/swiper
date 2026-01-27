@@ -36,6 +36,7 @@ let currentEditTaskId = null;
 let isInitializing = true;
 let currentContextTaskId = null;
 let cachedGlobalPomodoroSettings = null;
+let isNoDateCollapsed = true;
 
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', async () => {
@@ -334,6 +335,14 @@ function setupEventListeners() {
 
   setupDeadlineQuickButtons();
   setupTaskContextMenu();
+
+  const noDateToggle = document.getElementById('noDateTasksToggle');
+  if (noDateToggle) {
+    noDateToggle.addEventListener('click', () => {
+      isNoDateCollapsed = !isNoDateCollapsed;
+      updateNoDateSectionState();
+    });
+  }
 }
 
 // Обработка добавления задачи
@@ -343,12 +352,13 @@ async function handleAddTask(e) {
   const categorySelect = document.getElementById('categorySelect');
   const prioritySelect = document.getElementById('prioritySelect');
   const deadlineInput = document.getElementById('deadlineInput');
+  const defaultDeadline = getDateStringWithOffset(0);
 
   const task = {
     text: taskInput.value.trim(),
     category: categorySelect.value,
     priority: prioritySelect.value,
-    deadline: deadlineInput.value || null
+    deadline: deadlineInput.value || defaultDeadline
   };
 
   if (task.text) {
@@ -913,6 +923,8 @@ async function renderActiveTasks() {
   const otherTasksList = document.getElementById('otherTasksList');
   const todayTasksSection = document.getElementById('todayTasksSection');
   const otherTasksSection = document.getElementById('otherTasksSection');
+  const noDateTasksList = document.getElementById('noDateTasksList');
+  const noDateTasksSection = document.getElementById('noDateTasksSection');
   
   // Получаем элементы для всех разделов
   const overdueTasksList = document.getElementById('overdueTasksList');
@@ -925,6 +937,8 @@ async function renderActiveTasks() {
       otherTasksList: !!otherTasksList,
       todayTasksSection: !!todayTasksSection,
       otherTasksSection: !!otherTasksSection,
+      noDateTasksList: !!noDateTasksList,
+      noDateTasksSection: !!noDateTasksSection,
       overdueTasksList: !!overdueTasksList,
       overdueTasksSection: !!overdueTasksSection
     });
@@ -976,9 +990,11 @@ async function renderActiveTasks() {
     updateEmptyState(true);
     if (todayTasksList) todayTasksList.innerHTML = '';
     if (otherTasksList) otherTasksList.innerHTML = '';
+    if (noDateTasksList) noDateTasksList.innerHTML = '';
     if (overdueTasksList) overdueTasksList.innerHTML = '';
     if (todayTasksSection) todayTasksSection.style.display = 'none';
     if (otherTasksSection) otherTasksSection.style.display = 'none';
+    if (noDateTasksSection) noDateTasksSection.style.display = 'none';
     if (overdueTasksSection) overdueTasksSection.style.display = 'none';
     return;
   }
@@ -1020,13 +1036,17 @@ async function renderActiveTasks() {
     ...todayTasks.map(t => t.id)
   ]);
   
-  // Задачи "Позже" - все остальные задачи (с дедлайном в будущем или без дедлайна)
-  const laterTasks = filtered.filter(task => !overdueAndTodayTaskIds.has(task.id));
+  // Задачи "Позже" - все задачи с дедлайном в будущем
+  const laterTasks = filtered.filter(task =>
+    task.deadline && !overdueAndTodayTaskIds.has(task.id)
+  );
+  const noDateTasks = filtered.filter(task => !task.deadline);
 
   // Сортировка задач
   const sortedOverdueTasks = sortTasks(overdueTasks);
   const sortedTodayTasks = sortTasks(todayTasks);
   const sortedLaterTasks = sortTasks(laterTasks);
+  const sortedNoDateTasks = sortTasks(noDateTasks);
 
   // Применяем фильтр по настройке taskDisplayMode
   if (taskDisplayMode === 'today') {
@@ -1044,6 +1064,10 @@ async function renderActiveTasks() {
     overdueTasksList.innerHTML = '';
     otherTasksSection.style.display = 'none';
     otherTasksList.innerHTML = '';
+    if (noDateTasksSection) {
+      noDateTasksSection.style.display = 'none';
+      if (noDateTasksList) noDateTasksList.innerHTML = '';
+    }
   } else {
     // Показываем все задачи (режим "all")
     // Рендерим просроченные задачи (если есть)
@@ -1071,6 +1095,17 @@ async function renderActiveTasks() {
     } else {
       otherTasksSection.style.display = 'none';
       otherTasksList.innerHTML = '';
+    }
+
+    if (noDateTasksSection && noDateTasksList) {
+      if (sortedNoDateTasks.length > 0) {
+        noDateTasksSection.style.display = 'block';
+        renderTasksToContainer(noDateTasksList, sortedNoDateTasks, { section: 'later' });
+        updateNoDateSectionState();
+      } else {
+        noDateTasksSection.style.display = 'none';
+        noDateTasksList.innerHTML = '';
+      }
     }
   }
   
@@ -1168,13 +1203,62 @@ function renderCompletedTasks() {
   completedEmptyState.style.display = 'none';
   completedList.style.display = 'block';
 
-  // Сортировка выполненных задач (по дате обновления, новые сверху)
-  const sortedCompleted = [...completedTasks].sort((a, b) => b.updatedAt - a.updatedAt);
+  const grouped = groupCompletedTasksByDate(completedTasks);
+  Object.keys(grouped).forEach((groupKey) => {
+    const section = document.createElement('div');
+    section.className = 'tasks-subsection';
 
-  sortedCompleted.forEach(task => {
-    const taskElement = createTaskElement(task, { section: 'completed' });
-    completedList.appendChild(taskElement);
+    const title = document.createElement('h3');
+    title.className = 'subsection-title';
+    title.textContent = groupKey;
+    section.appendChild(title);
+
+    const list = document.createElement('div');
+    list.className = 'tasks-list';
+    grouped[groupKey].forEach(task => {
+      const taskElement = createTaskElement(task, { section: 'completed' });
+      list.appendChild(taskElement);
+    });
+    section.appendChild(list);
+
+    completedList.appendChild(section);
   });
+}
+
+function groupCompletedTasksByDate(tasks) {
+  const groups = {};
+  const sorted = [...tasks].sort((a, b) => getCompletionTimestamp(b) - getCompletionTimestamp(a));
+  sorted.forEach(task => {
+    const completedAt = getCompletionTimestamp(task);
+    const label = formatCompletedGroupLabel(completedAt);
+    if (!groups[label]) {
+      groups[label] = [];
+    }
+    groups[label].push(task);
+  });
+  return groups;
+}
+
+function getCompletionTimestamp(task) {
+  return Number(task.completedAt) || Number(task.updatedAt) || Number(task.createdAt) || Date.now();
+}
+
+function formatCompletedGroupLabel(timestamp) {
+  const date = new Date(timestamp);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const target = new Date(date);
+  target.setHours(0, 0, 0, 0);
+
+  if (target.getTime() === today.getTime()) {
+    return 'Сегодня';
+  }
+  if (target.getTime() === yesterday.getTime()) {
+    return 'Вчера';
+  }
+  return target.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 }
 
 // Сортировка задач (для активных задач)
@@ -1270,7 +1354,7 @@ function createTaskElement(task, options = {}) {
   // Убрано отображение приоритета в карточке задачи
 
   const hideTodayDeadline = section === 'today' && deadlineClass === 'deadline-today';
-  if (task.deadline && !hideTodayDeadline) {
+  if (task.deadline && !hideTodayDeadline && section !== 'completed') {
     const deadlineSpan = document.createElement('span');
     deadlineSpan.className = `task-deadline ${deadlineClass}`;
     deadlineSpan.textContent = deadlineText;
@@ -1342,7 +1426,7 @@ function createTaskElement(task, options = {}) {
   taskDiv.appendChild(taskContent);
   taskDiv.appendChild(taskActions);
   
-  if (task.deadline && deadlineClass === 'deadline-overdue') {
+  if (task.deadline && deadlineClass === 'deadline-overdue' && section !== 'completed') {
     taskDiv.classList.add('overdue');
   }
 
@@ -1568,14 +1652,22 @@ function updateEmptyState(isEmpty) {
   const emptyState = document.getElementById('emptyState');
   const todayTasksSection = document.getElementById('todayTasksSection');
   const otherTasksSection = document.getElementById('otherTasksSection');
+  const noDateTasksSection = document.getElementById('noDateTasksSection');
   
   if (isEmpty) {
     if (emptyState) emptyState.style.display = 'block';
     if (todayTasksSection) todayTasksSection.style.display = 'none';
     if (otherTasksSection) otherTasksSection.style.display = 'none';
+    if (noDateTasksSection) noDateTasksSection.style.display = 'none';
   } else {
     if (emptyState) emptyState.style.display = 'none';
   }
+}
+
+function updateNoDateSectionState() {
+  const noDateTasksSection = document.getElementById('noDateTasksSection');
+  if (!noDateTasksSection) return;
+  noDateTasksSection.classList.toggle('collapsed', isNoDateCollapsed);
 }
 
 // Рендеринг часто откладываемых задач

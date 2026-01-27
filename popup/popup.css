@@ -693,6 +693,29 @@ body {
   letter-spacing: -0.2px;
 }
 
+.subsection-title.collapsible-title {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.subsection-title.collapsible-title::after {
+  content: '▾';
+  position: static;
+  transform: none;
+  font-size: 36px;
+  color: var(--color-text-secondary);
+}
+
+.tasks-subsection.collapsed .subsection-title.collapsible-title::after {
+  content: '▸';
+}
+
+.tasks-subsection.collapsed .tasks-list {
+  display: none;
+}
+
 /* Карточки задач */
 .task-item {
   display: flex;

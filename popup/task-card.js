@@ -239,6 +239,8 @@ function setupTaskCardListeners() {
   const moreOptionsBtn = document.getElementById('taskCardMoreOptionsBtn');
   const optionsMenu = document.getElementById('taskCardOptionsMenu');
   const optionNextWeekBtn = document.getElementById('taskCardOptionNextWeekBtn');
+  const optionHideSwiper3DaysBtn = document.getElementById('taskCardOptionHideSwiper3Days');
+  const optionHideSwiper1WeekBtn = document.getElementById('taskCardOptionHideSwiper1Week');
   const optionEditBtn = document.getElementById('taskCardOptionEditBtn');
   const optionDeleteBtn = document.getElementById('taskCardOptionDeleteBtn');
 
@@ -270,6 +272,18 @@ function setupTaskCardListeners() {
     optionNextWeekBtn.addEventListener('click', async () => {
       closeTaskCardOptionsMenu();
       await postponeTaskToNextMonday();
+    });
+  }
+  if (optionHideSwiper3DaysBtn) {
+    optionHideSwiper3DaysBtn.addEventListener('click', async () => {
+      closeTaskCardOptionsMenu();
+      await hideTaskFromSwiper(3);
+    });
+  }
+  if (optionHideSwiper1WeekBtn) {
+    optionHideSwiper1WeekBtn.addEventListener('click', async () => {
+      closeTaskCardOptionsMenu();
+      await hideTaskFromSwiper(7);
     });
   }
 
@@ -579,6 +593,17 @@ function displayTaskInfo() {
     const deadlineSpan = document.createElement('span');
     deadlineSpan.className = 'task-deadline';
     deadlineSpan.textContent = formatDeadline(currentTask.deadline);
+    deadlineSpan.title = 'Редактировать задачу';
+    deadlineSpan.style.cursor = 'pointer';
+    deadlineSpan.addEventListener('click', () => {
+      if (!isEditing) {
+        toggleEditMode();
+      }
+      const deadlineInput = document.getElementById('taskCardEditDeadline');
+      if (deadlineInput) {
+        deadlineInput.focus();
+      }
+    });
     meta.appendChild(deadlineSpan);
   }
   const link = normalizeTaskLink(currentTask.link);
@@ -591,8 +616,39 @@ function displayTaskInfo() {
     linkAnchor.textContent = link;
     meta.appendChild(linkAnchor);
   }
+  updateSwiperOptionsVisibility();
 }
 
+function updateSwiperOptionsVisibility() {
+  const optionHideSwiper3DaysBtn = document.getElementById('taskCardOptionHideSwiper3Days');
+  const optionHideSwiper1WeekBtn = document.getElementById('taskCardOptionHideSwiper1Week');
+  const shouldShow = isSwiperContext();
+  if (optionHideSwiper3DaysBtn) {
+    optionHideSwiper3DaysBtn.style.display = shouldShow ? '' : 'none';
+  }
+  if (optionHideSwiper1WeekBtn) {
+    optionHideSwiper1WeekBtn.style.display = shouldShow ? '' : 'none';
+  }
+}
+
+function isSwiperContext() {
+  const swiperSection = document.getElementById('swiperSection');
+  const isSwiperSection = swiperSection && window.getComputedStyle(swiperSection).display !== 'none';
+  const isSwiperPage = window.location.pathname.includes('swiper.html');
+  return isSwiperPage || isSwiperSection;
+}
+
+async function hideTaskFromSwiper(days) {
+  if (!currentTaskId) return;
+  const storage = getStorage();
+  const until = Date.now() + days * 24 * 60 * 60 * 1000;
+  await storage.updateTask(currentTaskId, { swiperHiddenUntil: until });
+  await refreshTaskLists();
+  await closeTaskCard();
+  if (typeof window.initSwiper === 'function' && isSwiperContext()) {
+    await window.initSwiper();
+  }
+}
 function openTitleEditor() {
   if (!currentTask) return;
   const titleElement = document.getElementById('taskCardTitle');

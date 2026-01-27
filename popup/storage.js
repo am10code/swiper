@@ -59,7 +59,9 @@ class StorageManager {
               log: task.log || [],
               nextSteps: task.nextSteps || [],
               pomodoroSettings: task.pomodoroSettings !== undefined ? task.pomodoroSettings : null,
-              link: task.link || null
+              link: task.link || null,
+              completedAt: task.completedAt || null,
+              swiperHiddenUntil: task.swiperHiddenUntil || null
             }));
           }
 
@@ -103,6 +105,8 @@ class StorageManager {
   // Добавить задачу
   async addTask(task) {
     const tasks = await this.getTasks();
+    const now = Date.now();
+    const creationText = `Создано: ${new Date(now).toLocaleString('ru-RU')}`;
     const newTask = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       text: task.text,
@@ -110,17 +114,25 @@ class StorageManager {
       category: task.category || '',
       priority: task.priority || 'medium',
       deadline: task.deadline || null,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
       postponeCount: 0,
       lastPostponed: null,
       // Данные карточки задачи
       pomodoroSessions: [],
       totalTime: 0, // в секундах
-      log: [],
+      log: [
+        {
+          id: now.toString() + Math.random().toString(36).substr(2, 9),
+          text: creationText,
+          timestamp: now
+        }
+      ],
       nextSteps: [],
       pomodoroSettings: null, // null означает использование глобальных настроек
-      link: null
+      link: null,
+      completedAt: null,
+      swiperHiddenUntil: null
     };
     tasks.push(newTask);
     await this.saveTasks(tasks);
@@ -159,6 +171,12 @@ class StorageManager {
       if (!task.hasOwnProperty('link')) {
         task.link = null;
       }
+      if (!task.hasOwnProperty('completedAt')) {
+        task.completedAt = null;
+      }
+      if (!task.hasOwnProperty('swiperHiddenUntil')) {
+        task.swiperHiddenUntil = null;
+      }
 
       tasks[index] = {
         ...task,
@@ -184,7 +202,22 @@ class StorageManager {
     const tasks = await this.getTasks();
     const task = tasks.find(t => t.id === taskId);
     if (task) {
-      return await this.updateTask(taskId, { completed: !task.completed });
+      const willComplete = !task.completed;
+      const updates = { completed: willComplete };
+      if (willComplete) {
+        const now = Date.now();
+        updates.completedAt = now;
+        const log = task.log || [];
+        log.unshift({
+          id: now.toString() + Math.random().toString(36).substr(2, 9),
+          text: `Завершено: ${new Date(now).toLocaleString('ru-RU')}`,
+          timestamp: now
+        });
+        updates.log = log;
+      } else {
+        updates.completedAt = null;
+      }
+      return await this.updateTask(taskId, updates);
     }
     return null;
   }

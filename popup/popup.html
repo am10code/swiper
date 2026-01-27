@@ -114,6 +114,13 @@
           <!-- Остальные задачи будут добавлены динамически -->
         </div>
       </div>
+      <!-- Без даты -->
+      <div id="noDateTasksSection" class="tasks-subsection collapsible" style="display: none;">
+        <h3 id="noDateTasksToggle" class="subsection-title collapsible-title">Без даты</h3>
+        <div id="noDateTasksList" class="tasks-list">
+          <!-- Задачи без даты будут добавлены динамически -->
+        </div>
+      </div>
       <div id="emptyState" class="empty-state" style="display: none;">
         <p>Нет активных задач. Добавьте первую задачу!</p>
       </div>
@@ -314,6 +321,8 @@
         </div>
         <div id="taskCardOptionsMenu" class="task-context-menu" style="display: none;">
           <button id="taskCardOptionNextWeekBtn">Перенести на следующую неделю</button>
+          <button id="taskCardOptionHideSwiper3Days">Не показывать в свайпере 3 дня</button>
+          <button id="taskCardOptionHideSwiper1Week">Не показывать в свайпере 1 неделю</button>
           <button id="taskCardOptionEditBtn">Редактировать</button>
           <button id="taskCardOptionDeleteBtn" class="danger">Удалить</button>
         </div>
