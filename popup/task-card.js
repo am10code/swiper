@@ -139,6 +139,7 @@ window.openTaskCard = async function(taskId) {
   isHistoryExpanded = false;
   isCompletedExpanded = false;
   isTitleEditing = false;
+  isEditing = false;
   
   if (!currentTask) {
     console.error('Задача не найдена:', taskId);
@@ -170,6 +171,10 @@ window.openTaskCard = async function(taskId) {
     
     // Предотвращаем прокрутку основного контента
     document.body.style.overflow = 'hidden';
+    const editSection = document.getElementById('taskCardEditSection');
+    if (editSection) {
+      editSection.style.display = 'none';
+    }
     const nextStepInput = document.getElementById('nextStepInput');
     if (nextStepInput) {
       setTimeout(() => nextStepInput.focus(), 0);
@@ -288,11 +293,21 @@ function setupTaskCardListeners() {
   }
 
   document.addEventListener('click', (e) => {
-    if (!optionsMenu || optionsMenu.style.display === 'none') return;
-    if (moreOptionsBtn && (e.target === moreOptionsBtn || moreOptionsBtn.contains(e.target))) {
-      return;
+    if (optionsMenu && optionsMenu.style.display !== 'none') {
+      if (moreOptionsBtn && (e.target === moreOptionsBtn || moreOptionsBtn.contains(e.target))) {
+        return;
+      }
+      closeTaskCardOptionsMenu();
     }
-    closeTaskCardOptionsMenu();
+
+    if (isEditing) {
+      const editSection = document.getElementById('taskCardEditSection');
+      const clickedInsideEdit = editSection && editSection.contains(e.target);
+      const clickedEditButton = optionEditBtn && (e.target === optionEditBtn || optionEditBtn.contains(e.target));
+      if (!clickedInsideEdit && !clickedEditButton) {
+        toggleEditMode();
+      }
+    }
   });
 
   // Быстрые действия
@@ -361,10 +376,12 @@ function setupTaskCardListeners() {
   });
 
   // Сохранение редактирования задачи
-  document.getElementById('taskCardEditText').addEventListener('blur', saveTaskEdit);
-  document.getElementById('taskCardEditPriority').addEventListener('change', saveTaskEdit);
-  document.getElementById('taskCardEditDeadline').addEventListener('change', saveTaskEdit);
-  document.getElementById('taskCardEditLink').addEventListener('change', saveTaskEdit);
+  const editPriority = document.getElementById('taskCardEditPriority');
+  const editDeadline = document.getElementById('taskCardEditDeadline');
+  const editLink = document.getElementById('taskCardEditLink');
+  if (editPriority) editPriority.addEventListener('change', saveTaskEdit);
+  if (editDeadline) editDeadline.addEventListener('change', saveTaskEdit);
+  if (editLink) editLink.addEventListener('change', saveTaskEdit);
 
   document.querySelectorAll('.deadline-quick-btn[data-target="taskCardEditDeadline"]').forEach(button => {
     button.addEventListener('click', () => {
@@ -595,7 +612,9 @@ function displayTaskInfo() {
     deadlineSpan.textContent = formatDeadline(currentTask.deadline);
     deadlineSpan.title = 'Редактировать задачу';
     deadlineSpan.style.cursor = 'pointer';
-    deadlineSpan.addEventListener('click', () => {
+    deadlineSpan.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       if (!isEditing) {
         toggleEditMode();
       }
@@ -1503,7 +1522,6 @@ async function toggleEditMode() {
     if (editBtn) editBtn.textContent = 'Отменить';
     
     // Заполняем поля редактирования
-    document.getElementById('taskCardEditText').value = currentTask.text;
     document.getElementById('taskCardEditPriority').value = normalizePriority(currentTask.priority);
     document.getElementById('taskCardEditDeadline').value = currentTask.deadline || '';
     document.getElementById('taskCardEditLink').value = currentTask.link || '';
@@ -1519,7 +1537,6 @@ async function saveTaskEdit() {
   
   const storage = getStorage();
   const updates = {
-    text: document.getElementById('taskCardEditText').value.trim(),
     priority: document.getElementById('taskCardEditPriority').value,
     deadline: document.getElementById('taskCardEditDeadline').value || null
   };
@@ -1530,11 +1547,6 @@ async function saveTaskEdit() {
     return;
   }
   updates.link = linkValue || null;
-  
-  if (!updates.text) {
-    alert('Текст задачи не может быть пустым');
-    return;
-  }
   
   await storage.updateTask(currentTaskId, updates);
   currentTask = { ...currentTask, ...updates };
