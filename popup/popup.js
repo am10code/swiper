@@ -899,7 +899,7 @@ function updatePageTitle(sectionName) {
     'tasks': 'Задачи',
     'search': 'Поиск',
     'completed': 'Выполненные задачи',
-    'swiper': 'ТаскСвайпер',
+    'swiper': 'Свайпер',
     'frequently-postponed': 'Часто откладываемые',
     'settings': 'Настройки'
   };

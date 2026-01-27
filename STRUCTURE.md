@@ -21,7 +21,7 @@
   - `.burger-menu-item[data-section="tasks"]` — раздел "Задачи".
   - `.burger-menu-item[data-section="search"]` — "Поиск".
   - `.burger-menu-item[data-section="completed"]` — "Выполненные задачи".
-  - `.burger-menu-item[data-section="swiper"]` — "ТаскСвайпер".
+  - `.burger-menu-item[data-section="swiper"]` — "Свайпер".
   - `.burger-menu-item[data-section="frequently-postponed"]` — "Часто откладываемые".
   - `.burger-menu-item[data-section="settings"]` — "Настройки".
   - **Логика переключения:** `popup/popup.js` (switchSection).
@@ -86,18 +86,18 @@
   - `#frequentlyPostponedList`, `#frequentlyPostponedEmptyState`.
   - **Логика:** `popup/popup.js` (renderFrequentlyPostponed).
 
-**Раздел "ТаскСвайпер"**
+**Раздел "Свайпер"**
 - `#swiperSection`
   - `#swiperCardContainer` — контейнер карточек.
   - `#postponeBtn`, `#scheduleBtn`, `#undoBtn`, `#editSwiperBtn`, `#deleteSwiperBtn`.
   - `#swiperCounter`, `#swiperHint`, `#swiperEmptyState`, `#swiperBackToTasksBtn`.
   - **Логика:** `popup/modules/swiper/swiper.js`, `popup/modules/swiper/swiper-init.js`.
 
-### Отдельная страница "ТаскСвайпер"
+### Отдельная страница "Свайпер"
 - **Файл:** `swiper.html`
 - **Стили:** `popup/popup.css` + локальные `<style>` в `swiper.html`
 - **Логика:** `popup/modules/swiper/swiper.js`, `popup/modules/swiper/swiper-nav.js`, `popup/modules/swiper/swiper-init.js`
-- **Назначение:** выделенная страница для "ТаскСвайпер" с собственным хедером и меню, навигация через `swiper-nav.js`.
+- **Назначение:** выделенная страница для "Свайпер" с собственным хедером и меню, навигация через `swiper-nav.js`.
 
 ### Popup‑страница расширения
 - **Файл:** `popup/popup.html`
@@ -140,7 +140,7 @@
 - **Назначение:** безопасное подтверждение удаления задачи.
 - **Логика:** `popup/task-card.js` (openDeleteModal, confirmDeleteTask)
 
-### Модалка подтверждения удаления задачи (ТаскСвайпер)
+### Модалка подтверждения удаления задачи (Свайпер)
 - **Файл:** `main.html`, `swiper.html`
 - **Контейнер:** `#swiperDeleteModal`
 - **Содержание:** `#swiperDeleteMessage`, `#swiperDeleteCancelBtn`, `#swiperDeleteConfirmBtn`

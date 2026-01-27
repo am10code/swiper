@@ -13,6 +13,7 @@ let pendingDeleteTaskId = null;
 let isHistoryExpanded = false;
 let isCompletedExpanded = false;
 let isPomodoroStopping = false;
+let isTitleEditing = false;
 let pomodoroState = 'IDLE_POMODORO';
 let pomodoroRemainingSeconds = 0;
 let pomodoroIntervalId = null;
@@ -137,6 +138,7 @@ window.openTaskCard = async function(taskId) {
   isLogExpanded = null;
   isHistoryExpanded = false;
   isCompletedExpanded = false;
+  isTitleEditing = false;
   
   if (!currentTask) {
     console.error('Задача не найдена:', taskId);
@@ -211,6 +213,28 @@ function setupTaskCardListeners() {
     e.stopPropagation();
     await closeTaskCard();
   });
+
+  // Редактирование заголовка по клику
+  const titleElement = document.getElementById('taskCardTitle');
+  const titleInput = document.getElementById('taskCardTitleInput');
+  if (titleElement && titleInput) {
+    titleElement.addEventListener('click', () => {
+      openTitleEditor();
+    });
+    titleInput.addEventListener('blur', () => {
+      saveTitleEditor();
+    });
+    titleInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        titleInput.blur();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        cancelTitleEditor();
+      }
+    });
+  }
 
   const moreOptionsBtn = document.getElementById('taskCardMoreOptionsBtn');
   const optionsMenu = document.getElementById('taskCardOptionsMenu');
@@ -523,8 +547,14 @@ async function loadTaskCardData() {
 // Отображение информации о задаче
 function displayTaskInfo() {
   const titleElement = document.getElementById('taskCardTitle');
+  const titleInput = document.getElementById('taskCardTitleInput');
   if (titleElement) {
     titleElement.textContent = currentTask.text;
+    titleElement.style.display = isTitleEditing ? 'none' : 'block';
+  }
+  if (titleInput) {
+    titleInput.value = currentTask.text;
+    titleInput.style.display = isTitleEditing ? 'block' : 'none';
   }
   
   const meta = document.getElementById('taskCardMeta');
@@ -561,6 +591,60 @@ function displayTaskInfo() {
     linkAnchor.textContent = link;
     meta.appendChild(linkAnchor);
   }
+}
+
+function openTitleEditor() {
+  if (!currentTask) return;
+  const titleElement = document.getElementById('taskCardTitle');
+  const titleInput = document.getElementById('taskCardTitleInput');
+  if (!titleElement || !titleInput) return;
+  isTitleEditing = true;
+  titleElement.style.display = 'none';
+  titleInput.style.display = 'block';
+  titleInput.value = currentTask.text;
+  titleInput.focus();
+  const length = titleInput.value.length;
+  titleInput.setSelectionRange(length, length);
+}
+
+async function saveTitleEditor() {
+  if (!isTitleEditing) return;
+  const titleElement = document.getElementById('taskCardTitle');
+  const titleInput = document.getElementById('taskCardTitleInput');
+  if (!titleElement || !titleInput) return;
+  const nextTitle = titleInput.value.trim();
+  isTitleEditing = false;
+  titleInput.style.display = 'none';
+  titleElement.style.display = 'block';
+  if (!nextTitle || nextTitle === currentTask?.text) {
+    titleElement.textContent = currentTask?.text || '';
+    return;
+  }
+  try {
+    const storage = getStorage();
+    await storage.updateTask(currentTaskId, { text: nextTitle });
+    if (currentTask) {
+      currentTask = { ...currentTask, text: nextTitle };
+    }
+    titleElement.textContent = nextTitle;
+    if (typeof refreshTaskLists === 'function') {
+      await refreshTaskLists();
+    }
+  } catch (error) {
+    console.error('Ошибка при сохранении названия задачи:', error);
+    titleElement.textContent = currentTask?.text || '';
+  }
+}
+
+function cancelTitleEditor() {
+  if (!isTitleEditing) return;
+  const titleElement = document.getElementById('taskCardTitle');
+  const titleInput = document.getElementById('taskCardTitleInput');
+  if (!titleElement || !titleInput) return;
+  isTitleEditing = false;
+  titleInput.style.display = 'none';
+  titleElement.style.display = 'block';
+  titleElement.textContent = currentTask?.text || '';
 }
 
 function toggleTaskCardOptionsMenu(anchorElement) {
@@ -1485,17 +1569,21 @@ async function handleTaskCardComplete() {
 
 async function handleOpenNextTodayTask() {
   await stopActivePomodoroSession();
-  const todayTasks = await getTodayTasksSorted();
-  if (todayTasks.length === 0) {
-    alert('На сегодня нет задач.');
+  const swiperSection = document.getElementById('swiperSection');
+  const isSwiperSection = swiperSection && window.getComputedStyle(swiperSection).display !== 'none';
+  const isSwiperPage = window.location.pathname.includes('swiper.html');
+  const useSwiperFlow = isSwiperPage || isSwiperSection;
+  const tasks = useSwiperFlow ? await getActiveTasksSorted() : await getTodayTasksSorted();
+  if (tasks.length === 0) {
+    alert(useSwiperFlow ? 'Нет активных задач.' : 'На сегодня нет задач.');
     return;
   }
 
-  const currentIndex = todayTasks.findIndex(task => task.id === currentTaskId);
+  const currentIndex = tasks.findIndex(task => task.id === currentTaskId);
   const nextIndex = currentIndex === -1
     ? 0
-    : (currentIndex + 1) % todayTasks.length;
-  const nextTask = todayTasks[nextIndex];
+    : (currentIndex + 1) % tasks.length;
+  const nextTask = tasks[nextIndex];
 
   if (nextTask && typeof window.openTaskCard === 'function') {
     await window.openTaskCard(nextTask.id);
@@ -1548,6 +1636,13 @@ async function getTodayTasksSorted() {
   ));
 
   return sortTasksByPriorityDeadlineCreated(todayTasks);
+}
+
+async function getActiveTasksSorted() {
+  const storage = getStorage();
+  const tasks = await storage.getTasks();
+  const activeTasks = tasks.filter(task => !task.completed);
+  return sortTasksByPriorityDeadlineCreated(activeTasks);
 }
 
 function isTaskDueToday(task, todayKey) {
