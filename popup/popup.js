@@ -288,6 +288,12 @@ function setupEventListeners() {
   if (pomodoroSaveBtn) {
     pomodoroSaveBtn.addEventListener('click', saveGlobalPomodoroSettings);
   }
+  const logCompletedStepsToggle = document.getElementById('logCompletedStepsToggle');
+  if (logCompletedStepsToggle) {
+    logCompletedStepsToggle.addEventListener('change', async (e) => {
+      await saveLogCompletedStepsSetting(e.target.checked);
+    });
+  }
 
   if (typeof setupImportExport === 'function') {
     setupImportExport({
@@ -512,11 +518,15 @@ async function loadSettingsSection() {
   const shortBreakInput = document.getElementById('pomodoroShortBreak');
   const longBreakInput = document.getElementById('pomodoroLongBreak');
   const longBreakAfterInput = document.getElementById('pomodoroLongBreakAfter');
+  const logCompletedStepsToggle = document.getElementById('logCompletedStepsToggle');
 
   if (intervalInput) intervalInput.value = globalPomodoroSettings.interval;
   if (shortBreakInput) shortBreakInput.value = globalPomodoroSettings.shortBreak;
   if (longBreakInput) longBreakInput.value = globalPomodoroSettings.longBreak;
   if (longBreakAfterInput) longBreakAfterInput.value = globalPomodoroSettings.longBreakAfter;
+  if (logCompletedStepsToggle) {
+    logCompletedStepsToggle.checked = settings.logCompletedSteps === true;
+  }
 }
 
 // Открытие модального окна настроек задач
@@ -576,6 +586,7 @@ async function saveGlobalPomodoroSettings() {
   const shortBreakInput = document.getElementById('pomodoroShortBreak');
   const longBreakInput = document.getElementById('pomodoroLongBreak');
   const longBreakAfterInput = document.getElementById('pomodoroLongBreakAfter');
+  const logCompletedStepsToggle = document.getElementById('logCompletedStepsToggle');
 
   const settings = {
     interval: parseInt(intervalInput?.value, 10) || 25,
@@ -584,7 +595,23 @@ async function saveGlobalPomodoroSettings() {
     longBreakAfter: parseInt(longBreakAfterInput?.value, 10) || 4
   };
 
-  await storage.updateGlobalPomodoroSettings(settings);
+  const currentSettings = await storage.getSettings();
+  await storage.updateSettings({
+    ...currentSettings,
+    globalPomodoroSettings: {
+      ...currentSettings.globalPomodoroSettings,
+      ...settings
+    },
+    logCompletedSteps: logCompletedStepsToggle ? logCompletedStepsToggle.checked : false
+  });
+}
+
+async function saveLogCompletedStepsSetting(isEnabled) {
+  const currentSettings = await storage.getSettings();
+  await storage.updateSettings({
+    ...currentSettings,
+    logCompletedSteps: isEnabled === true
+  });
 }
 
 // Поиск задач в разделе поиска
@@ -1329,7 +1356,7 @@ function createTaskElement(task, options = {}) {
 
   const taskText = document.createElement('span');
   taskText.className = 'task-text';
-  taskText.textContent = task.text;
+  appendTaskTitleWithRecurringMarker(taskText, task);
 
   const nextStepText = getNextStepPreviewText(task);
   const taskNextStep = document.createElement('span');
@@ -1391,19 +1418,6 @@ function createTaskElement(task, options = {}) {
 
   const taskActions = document.createElement('div');
   taskActions.className = 'task-actions';
-
-  if (section !== 'completed') {
-    const editBtn = document.createElement('button');
-    editBtn.className = 'btn-icon task-action-btn';
-    editBtn.title = 'Редактировать';
-    const editIcon = createIcon('edit', 16);
-    if (editIcon) editBtn.appendChild(editIcon);
-    editBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openEditModal(task.id);
-    });
-    taskActions.appendChild(editBtn);
-  }
 
   if (section === 'completed') {
     const timeBadge = document.createElement('span');
@@ -1716,7 +1730,7 @@ function createFrequentlyPostponedElement(task) {
   
   const taskText = document.createElement('span');
   taskText.className = 'task-text';
-  taskText.textContent = task.text;
+  appendTaskTitleWithRecurringMarker(taskText, task);
   
   const taskMeta = document.createElement('div');
   taskMeta.className = 'task-meta';
@@ -1770,13 +1784,6 @@ function createFrequentlyPostponedElement(task) {
     await renderFrequentlyPostponed();
   });
   
-  const editBtn = document.createElement('button');
-  editBtn.className = 'btn-icon';
-  editBtn.title = 'Редактировать';
-  const editIcon2 = createIcon('edit', 16);
-  if (editIcon2) editBtn.appendChild(editIcon2);
-  editBtn.addEventListener('click', () => openEditModal(task.id));
-  
   const scheduleBtn = document.createElement('button');
   scheduleBtn.className = 'btn-icon';
   scheduleBtn.title = 'Запланировать на сегодня';
@@ -1804,7 +1811,6 @@ function createFrequentlyPostponedElement(task) {
   });
   
   taskActions.appendChild(resetBtn);
-  taskActions.appendChild(editBtn);
   taskActions.appendChild(scheduleBtn);
   taskActions.appendChild(deleteBtn);
   
@@ -1821,6 +1827,18 @@ function createFrequentlyPostponedElement(task) {
   }
   
   return taskDiv;
+}
+
+function appendTaskTitleWithRecurringMarker(container, task) {
+  container.textContent = task.text || '';
+  if (task?.isRecurringParticipation !== true) {
+    return;
+  }
+  const marker = document.createElement('span');
+  marker.className = 'task-recurring-indicator';
+  marker.textContent = '↻';
+  marker.setAttribute('aria-hidden', 'true');
+  container.appendChild(marker);
 }
 
 // Экспорт функций для использования в других модулях (task-card.js)

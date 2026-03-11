@@ -4,6 +4,12 @@
 
 ## Точки входа и страницы
 
+## Правила сборки CRX
+
+- Путь к ключу и приватная команда сборки не хранятся в публичных файлах проекта.
+- Локальная инструкция сборки вынесена в `BUILD_PRIVATE.md` (файл в `.gitignore`).
+- Для стабильного ID расширения сборка должна выполняться с постоянным приватным ключом.
+
 ### Главная страница расширения (вкладка) — "Задачи"
 - **Файл:** `main.html`
 - **Стили:** `popup/popup.css`
@@ -34,6 +40,9 @@
     - `#todayTasksList` — список карточек задач.
   - `#otherTasksSection` — "Позже".
     - `#otherTasksList` — список карточек задач.
+  - `#noDateTasksSection` — "Без даты" (кат, по умолчанию свернут).
+    - `#noDateTasksToggle` — заголовок‑переключатель раскрытия.
+    - `#noDateTasksList` — список задач без дедлайна.
   - `#emptyState` — пустое состояние.
   - **Логика разбиения:** `popup/popup.js` (renderActiveTasks).
   - **Контекстное меню задачи:** `#taskContextMenu`
@@ -45,6 +54,7 @@
     - Строка следующего шага: `.task-next-step` (текст шага или плейсхолдер).
     - Индикатор фокуса: `.task-focus-indicator` (например, `⏱ 25м`, для 25м показывается по hover/focus).
       - Клик по индикатору открывает карточку и запускает таймер.
+    - Инлайн-редактирование из списка отключено (кнопка карандаша скрыта); редактирование через полную карточку задачи.
     - Просрочка: `.task-item.overdue` (тонкая левая полоска).
 
 **Форма добавления задачи (приклеена снизу)**
@@ -68,9 +78,11 @@
   - Блок "Настройки помодоро":
     - `#pomodoroInterval`, `#pomodoroShortBreak`, `#pomodoroLongBreak`, `#pomodoroLongBreakAfter`
     - `#pomodoroSaveSettingsBtn` — сохранить глобальные настройки помодоро.
+  - Блок "Логи":
+    - `#logCompletedStepsToggle` — глобальный чекбокс "Логировать выполнение шагов" (сохраняется сразу при переключении).
   - Блок "Импорт и экспорт задач":
     - `#tasksExportBtn` — экспорт задач в файл `.swiper`.
-    - `#tasksImportBtn`, `#tasksImportInput` — импорт `.swiper`/`.json` с заменой задач.
+    - `#tasksImportBtn`, `#tasksImportInput` — импорт `.swiper`/`.json` с заменой задач; обязательное поле только `text`, лишние поля допускаются.
   - Блок "Для разработчика":
     - `#testNotificationBtn` — тест уведомления.
   - **Логика:** `popup/popup.js` (loadSettingsSection, saveGlobalPomodoroSettings).
@@ -115,7 +127,7 @@
 - **Файл:** `main.html`, `popup/popup.html`
 - **Контейнер:** `#editModal`
 - **Содержание:** `#editForm`, `#editTaskInput`, `#editCategorySelect`, `#editPrioritySelect` (Обычный/Высокий), `#editDeadlineInput`
-- **Быстрые кнопки:** `.deadline-quick-btn` ("Сегодня", "Завтра")
+- **Быстрые кнопки:** `.deadline-quick-btn` ("Сегодня", "Завтра", "На следующей неделе")
 - **Назначение:** редактирование текста/категории/приоритета/дедлайна.
 - **Логика:** `popup/popup.js` (handleEditTask, setupDeadlineQuickButtons)
 
@@ -166,14 +178,18 @@
 
 **Редактирование в карточке**
 - `#taskCardEditSection`
-  - `#taskCardEditText`, `#taskCardEditPriority` (Обычный/Высокий), `#taskCardEditDeadline`, `#taskCardEditLink`
-  - Быстрые кнопки дедлайна: `.deadline-quick-btn`
+  - `#taskCardEditPriority` (Обычный/Высокий), `#taskCardEditDeadline`, `#taskCardEditLink`
+  - `#taskCardEditRecurringParticipation` — переключатель режима "регулярное участие".
+  - `#taskCardEditRecurrenceDays` — период регулярности в днях (по умолчанию 3); показывается только при активном `#taskCardEditRecurringParticipation`.
+  - Быстрые кнопки дедлайна: `.deadline-quick-btn` (Сегодня/Завтра/На следующей неделе), блок расположен выше настроек регулярности.
 
 **Две колонки**
 - `div.task-card-columns`
   - **Левая 65%: "Что сделать следующим?"**
     - `.next-steps-container`, `#nextStepInput`, `#nextStepAddBtn`
     - `#nextStepsActive`, `#nextStepsCompleted`
+    - Клик по строке шага отмечает подзадачу выполненной/невыполненной.
+    - Клик по `.next-step-delete` удаляет подзадачу.
   - **Правая 35%: "Фокус (помодоро)"**
     - `#pomodoroTimerDisplay`, `#pomodoroStartBtn`, `#pomodoroPauseBtn`, `#pomodoroStopBtn`, `#pomodoroStartBreakBtn`, `#pomodoroResetBtn`
     - `#pomodoroSoundToggleBtn`, `#pomodoroSoundToggleIcon` — переключатель фонового звука.
@@ -184,15 +200,25 @@
 - `.task-log-section`
   - `#taskLogToggleBtn`, `#taskLogBody` — сворачивание/раскрытие.
   - `.task-log-container` → `#taskLogInput`, `#taskLogAddBtn`, `#taskLogEntries`
+  - При включенном `#logCompletedStepsToggle` в лог автоматически добавляется запись `Выполнен шаг <название шага>` при закрытии подшага.
 
 **Действия**
-- `#taskCardCompleteBtn` — отметить задачу выполненной
-- `#taskCardNextBtn` — перейти к следующей задаче на сегодня
+- `#taskCardCompleteBtn` — основное действие:
+  - для обычной задачи: "Отметить задачу выполненной"
+  - для регулярной задачи: "Выполнено на сегодня" (перенос дедлайна на период регулярности)
+- `#taskCardNextBtn` — перейти к следующей задаче из очереди "Просрочено" → "Сегодня"
 - `#taskCardMoreOptionsBtn` — меню дополнительных опций
 - `#taskCardOptionsMenu`:
   - `#taskCardOptionNextWeekBtn` — перенести на следующую неделю
+  - `#taskCardOptionHideSwiper3Days` — скрыть из свайпера на 3 дня
+  - `#taskCardOptionHideSwiper1Week` — скрыть из свайпера на 1 неделю
+  - `#taskCardOptionCompleteBtn` — принудительно завершить задачу
   - `#taskCardOptionEditBtn` — редактировать
   - `#taskCardOptionDeleteBtn` — удалить
+
+**Индикатор регулярности в названиях**
+- Для задач с `isRecurringParticipation = true` рядом с названием отображается серый символ `↻`.
+- Индикатор отображается во всех основных местах рендера названия задачи (списки, выполненные, часто откладываемые, полная карточка, Свайпер) и не имеет действия по клику.
 
 ## Служебные элементы и данные
 

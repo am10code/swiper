@@ -128,6 +128,8 @@
       const swiperHiddenUntil = task.swiperHiddenUntil === null || typeof task.swiperHiddenUntil === 'number'
         ? task.swiperHiddenUntil
         : null;
+      const isRecurringParticipation = task.isRecurringParticipation === true;
+      const recurrenceDays = Math.max(1, Number(task.recurrenceDays) || 3);
 
       const sessionsValidation = validatePomodoroSessions(pomodoroSessions, i + 1);
       if (!sessionsValidation.ok) return sessionsValidation;
@@ -156,7 +158,9 @@
         pomodoroSettings,
         link,
         completedAt,
-        swiperHiddenUntil
+        swiperHiddenUntil,
+        isRecurringParticipation,
+        recurrenceDays
       });
     }
 
@@ -165,6 +169,15 @@
 
   function createTaskId() {
     return Date.now().toString() + Math.random().toString(36).substr(2, 9);
+  }
+
+  function validateKeys(obj, _allowedKeys, requiredKeys) {
+    const missingKeys = (requiredKeys || []).filter((key) => !Object.prototype.hasOwnProperty.call(obj, key));
+    if (missingKeys.length > 0) {
+      return { ok: false, error: `отсутствуют обязательные поля: ${missingKeys.join(', ')}` };
+    }
+    // Import is intentionally forward-compatible: unknown keys are allowed.
+    return { ok: true };
   }
 
   function validatePomodoroSessions(sessions, taskIndex) {

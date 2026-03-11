@@ -246,6 +246,7 @@ function setupTaskCardListeners() {
   const optionNextWeekBtn = document.getElementById('taskCardOptionNextWeekBtn');
   const optionHideSwiper3DaysBtn = document.getElementById('taskCardOptionHideSwiper3Days');
   const optionHideSwiper1WeekBtn = document.getElementById('taskCardOptionHideSwiper1Week');
+  const optionCompleteBtn = document.getElementById('taskCardOptionCompleteBtn');
   const optionEditBtn = document.getElementById('taskCardOptionEditBtn');
   const optionDeleteBtn = document.getElementById('taskCardOptionDeleteBtn');
 
@@ -271,6 +272,12 @@ function setupTaskCardListeners() {
     optionDeleteBtn.addEventListener('click', () => {
       closeTaskCardOptionsMenu();
       openDeleteModal();
+    });
+  }
+  if (optionCompleteBtn) {
+    optionCompleteBtn.addEventListener('click', async () => {
+      closeTaskCardOptionsMenu();
+      await handleTaskCardComplete();
     });
   }
   if (optionNextWeekBtn) {
@@ -313,7 +320,7 @@ function setupTaskCardListeners() {
   // Быстрые действия
   const completeBtn = document.getElementById('taskCardCompleteBtn');
   if (completeBtn) {
-    completeBtn.addEventListener('click', handleTaskCardComplete);
+    completeBtn.addEventListener('click', handlePrimaryCompleteAction);
   }
   const nextBtn = document.getElementById('taskCardNextBtn');
   if (nextBtn) {
@@ -379,16 +386,30 @@ function setupTaskCardListeners() {
   const editPriority = document.getElementById('taskCardEditPriority');
   const editDeadline = document.getElementById('taskCardEditDeadline');
   const editLink = document.getElementById('taskCardEditLink');
+  const editRecurring = document.getElementById('taskCardEditRecurringParticipation');
+  const editRecurrenceDays = document.getElementById('taskCardEditRecurrenceDays');
   if (editPriority) editPriority.addEventListener('change', saveTaskEdit);
   if (editDeadline) editDeadline.addEventListener('change', saveTaskEdit);
   if (editLink) editLink.addEventListener('change', saveTaskEdit);
+  if (editRecurring) {
+    editRecurring.addEventListener('change', () => {
+      updateRecurringEditControls();
+      saveTaskEdit();
+    });
+  }
+  if (editRecurrenceDays) editRecurrenceDays.addEventListener('change', saveTaskEdit);
 
   document.querySelectorAll('.deadline-quick-btn[data-target="taskCardEditDeadline"]').forEach(button => {
     button.addEventListener('click', () => {
-      const offset = Number(button.getAttribute('data-offset') || 0);
       const input = document.getElementById('taskCardEditDeadline');
       if (!input) return;
-      input.value = getDateStringWithOffset(offset);
+      const action = button.getAttribute('data-action');
+      if (action === 'next-monday') {
+        input.value = getNextMondayDateString();
+      } else {
+        const offset = Number(button.getAttribute('data-offset') || 0);
+        input.value = getDateStringWithOffset(offset);
+      }
       input.dispatchEvent(new Event('change'));
     });
   });
@@ -580,7 +601,7 @@ function displayTaskInfo() {
   const titleElement = document.getElementById('taskCardTitle');
   const titleInput = document.getElementById('taskCardTitleInput');
   if (titleElement) {
-    titleElement.textContent = currentTask.text;
+    appendTaskCardTitleWithRecurringMarker(titleElement, currentTask);
     titleElement.style.display = isTitleEditing ? 'none' : 'block';
   }
   if (titleInput) {
@@ -636,6 +657,7 @@ function displayTaskInfo() {
     meta.appendChild(linkAnchor);
   }
   updateSwiperOptionsVisibility();
+  updatePrimaryCompleteButton();
 }
 
 function updateSwiperOptionsVisibility() {
@@ -648,6 +670,28 @@ function updateSwiperOptionsVisibility() {
   if (optionHideSwiper1WeekBtn) {
     optionHideSwiper1WeekBtn.style.display = shouldShow ? '' : 'none';
   }
+}
+
+function updatePrimaryCompleteButton() {
+  const completeBtn = document.getElementById('taskCardCompleteBtn');
+  const optionCompleteBtn = document.getElementById('taskCardOptionCompleteBtn');
+  const isRecurring = currentTask?.isRecurringParticipation === true;
+  if (completeBtn) {
+    completeBtn.textContent = isRecurring
+      ? 'Выполнено на сегодня'
+      : 'Отметить задачу выполненной';
+  }
+  if (optionCompleteBtn) {
+    optionCompleteBtn.style.display = isRecurring ? '' : 'none';
+  }
+}
+
+async function handlePrimaryCompleteAction() {
+  if (currentTask?.isRecurringParticipation) {
+    await handleTaskDoneForToday();
+    return;
+  }
+  await handleTaskCardComplete();
 }
 
 function isSwiperContext() {
@@ -692,7 +736,7 @@ async function saveTitleEditor() {
   titleInput.style.display = 'none';
   titleElement.style.display = 'block';
   if (!nextTitle || nextTitle === currentTask?.text) {
-    titleElement.textContent = currentTask?.text || '';
+    appendTaskCardTitleWithRecurringMarker(titleElement, currentTask);
     return;
   }
   try {
@@ -701,13 +745,13 @@ async function saveTitleEditor() {
     if (currentTask) {
       currentTask = { ...currentTask, text: nextTitle };
     }
-    titleElement.textContent = nextTitle;
+    appendTaskCardTitleWithRecurringMarker(titleElement, currentTask);
     if (typeof refreshTaskLists === 'function') {
       await refreshTaskLists();
     }
   } catch (error) {
     console.error('Ошибка при сохранении названия задачи:', error);
-    titleElement.textContent = currentTask?.text || '';
+    appendTaskCardTitleWithRecurringMarker(titleElement, currentTask);
   }
 }
 
@@ -719,7 +763,19 @@ function cancelTitleEditor() {
   isTitleEditing = false;
   titleInput.style.display = 'none';
   titleElement.style.display = 'block';
-  titleElement.textContent = currentTask?.text || '';
+  appendTaskCardTitleWithRecurringMarker(titleElement, currentTask);
+}
+
+function appendTaskCardTitleWithRecurringMarker(titleElement, task) {
+  titleElement.textContent = task?.text || '';
+  if (task?.isRecurringParticipation !== true) {
+    return;
+  }
+  const marker = document.createElement('span');
+  marker.className = 'task-recurring-indicator';
+  marker.textContent = '↻';
+  marker.setAttribute('aria-hidden', 'true');
+  titleElement.appendChild(marker);
 }
 
 function toggleTaskCardOptionsMenu(anchorElement) {
@@ -1410,6 +1466,16 @@ function createNextStepElement(step) {
     </svg>
   `;
   deleteBtn.addEventListener('click', () => deleteNextStep(step.id));
+
+  item.addEventListener('click', (e) => {
+    if (e.target.closest('.next-step-delete') || e.target.closest('.next-step-checkbox')) {
+      return;
+    }
+    if (isDraggingNextStep) {
+      return;
+    }
+    toggleNextStep(step.id);
+  });
   
   item.appendChild(checkbox);
   item.appendChild(text);
@@ -1426,8 +1492,18 @@ async function toggleNextStep(stepId) {
   
   const step = nextSteps.find(s => s.id === stepId);
   if (step) {
-    step.completed = !step.completed;
+    const willComplete = !step.completed;
+    step.completed = willComplete;
     await storage.updateNextSteps(currentTaskId, nextSteps);
+    if (willComplete) {
+      const settings = await storage.getSettings();
+      if (settings?.logCompletedSteps === true) {
+        const stepText = String(step.text || '').trim() || 'Без названия';
+        await storage.addLogEntry(currentTaskId, `Выполнен шаг: ${stepText}`);
+        const updatedCardData = await storage.getTaskCardData(currentTaskId);
+        displayLog(updatedCardData.log || []);
+      }
+    }
     displayNextSteps(nextSteps);
   }
 }
@@ -1456,9 +1532,11 @@ function setupDragAndDrop() {
 }
 
 let draggedElement = null;
+let isDraggingNextStep = false;
 
 function handleDragStart(e) {
   draggedElement = this;
+  isDraggingNextStep = true;
   this.classList.add('dragging');
   e.dataTransfer.effectAllowed = 'move';
 }
@@ -1508,6 +1586,9 @@ function handleDragEnd() {
     item.classList.remove('drag-over');
   });
   draggedElement = null;
+  setTimeout(() => {
+    isDraggingNextStep = false;
+  }, 0);
 }
 
 // Переключение режима редактирования
@@ -1525,6 +1606,15 @@ async function toggleEditMode() {
     document.getElementById('taskCardEditPriority').value = normalizePriority(currentTask.priority);
     document.getElementById('taskCardEditDeadline').value = currentTask.deadline || '';
     document.getElementById('taskCardEditLink').value = currentTask.link || '';
+    const recurringToggle = document.getElementById('taskCardEditRecurringParticipation');
+    const recurrenceDaysInput = document.getElementById('taskCardEditRecurrenceDays');
+    if (recurringToggle) {
+      recurringToggle.checked = currentTask.isRecurringParticipation === true;
+    }
+    if (recurrenceDaysInput) {
+      recurrenceDaysInput.value = Math.max(1, Number(currentTask.recurrenceDays) || 3);
+    }
+    updateRecurringEditControls();
   } else {
     editSection.style.display = 'none';
     if (editBtn) editBtn.textContent = 'Редактировать';
@@ -1547,12 +1637,15 @@ async function saveTaskEdit() {
     return;
   }
   updates.link = linkValue || null;
+  const recurringToggle = document.getElementById('taskCardEditRecurringParticipation');
+  const recurrenceDaysInput = document.getElementById('taskCardEditRecurrenceDays');
+  updates.isRecurringParticipation = recurringToggle ? recurringToggle.checked : false;
+  updates.recurrenceDays = Math.max(1, Math.floor(Number(recurrenceDaysInput?.value) || 3));
   
   await storage.updateTask(currentTaskId, updates);
   currentTask = { ...currentTask, ...updates };
   
   displayTaskInfo();
-  toggleEditMode();
   
   // Обновляем список задач в основном интерфейсе
   if (typeof window.renderActiveTasks === 'function') {
@@ -1560,6 +1653,18 @@ async function saveTaskEdit() {
   }
   if (typeof window.renderCompletedTasks === 'function') {
     window.renderCompletedTasks();
+  }
+}
+
+function updateRecurringEditControls() {
+  const recurringToggle = document.getElementById('taskCardEditRecurringParticipation');
+  const recurrenceDaysInput = document.getElementById('taskCardEditRecurrenceDays');
+  const recurrenceDaysWrap = document.getElementById('taskCardEditRecurrenceDaysWrap');
+  if (!recurringToggle || !recurrenceDaysInput) return;
+  const isEnabled = recurringToggle.checked;
+  recurrenceDaysInput.disabled = !isEnabled;
+  if (recurrenceDaysWrap) {
+    recurrenceDaysWrap.style.display = isEnabled ? 'inline-flex' : 'none';
   }
 }
 
@@ -1635,15 +1740,42 @@ async function handleTaskCardComplete() {
   }
 }
 
+async function handleTaskDoneForToday() {
+  if (!currentTaskId) return;
+  const storage = getStorage();
+  const periodDays = Math.max(1, Math.floor(Number(currentTask?.recurrenceDays) || 3));
+  const nextDeadline = getDateStringWithOffset(periodDays);
+  await storage.updateTask(currentTaskId, {
+    deadline: nextDeadline,
+    completed: false
+  });
+  const tasks = await storage.getTasks();
+  currentTask = tasks.find(t => t.id === currentTaskId) || currentTask;
+  displayTaskInfo();
+  await refreshTaskLists();
+
+  // После "Выполнено на сегодня" открываем следующую задачу:
+  // сначала просроченные, затем задачи на сегодня.
+  const overdueAndToday = getOverdueAndTodayTasksSorted(tasks);
+  if (overdueAndToday.length > 0 && typeof window.openTaskCard === 'function') {
+    await window.openTaskCard(overdueAndToday[0].id);
+    return;
+  }
+
+  await closeTaskCard();
+}
+
 async function handleOpenNextTodayTask() {
   await stopActivePomodoroSession();
   const swiperSection = document.getElementById('swiperSection');
   const isSwiperSection = swiperSection && window.getComputedStyle(swiperSection).display !== 'none';
   const isSwiperPage = window.location.pathname.includes('swiper.html');
   const useSwiperFlow = isSwiperPage || isSwiperSection;
-  const tasks = useSwiperFlow ? await getActiveTasksSorted() : await getTodayTasksSorted();
+  const tasks = useSwiperFlow
+    ? await getActiveTasksSorted()
+    : getOverdueAndTodayTasksSorted(await getStorage().getTasks());
   if (tasks.length === 0) {
-    alert(useSwiperFlow ? 'Нет активных задач.' : 'На сегодня нет задач.');
+    alert(useSwiperFlow ? 'Нет активных задач.' : 'Нет задач на сегодня или просроченных.');
     return;
   }
 
@@ -1711,6 +1843,26 @@ async function getActiveTasksSorted() {
   const tasks = await storage.getTasks();
   const activeTasks = tasks.filter(task => !task.completed);
   return sortTasksByPriorityDeadlineCreated(activeTasks);
+}
+
+function getOverdueAndTodayTasksSorted(tasks) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayKey = getDateKey(today);
+
+  const activeWithDeadline = (tasks || []).filter(task => !task.completed && !!task.deadline);
+  const overdue = activeWithDeadline.filter(task => {
+    const deadlineDate = parseDeadlineDate(task.deadline);
+    if (!deadlineDate || Number.isNaN(deadlineDate.getTime())) return false;
+    deadlineDate.setHours(0, 0, 0, 0);
+    return deadlineDate < today;
+  });
+  const todayTasks = activeWithDeadline.filter(task => isTaskDueToday(task, todayKey));
+
+  return [
+    ...sortTasksByPriorityDeadlineCreated(overdue),
+    ...sortTasksByPriorityDeadlineCreated(todayTasks)
+  ];
 }
 
 function isTaskDueToday(task, todayKey) {

@@ -225,7 +225,7 @@ function createCardElement(task) {
   
   const text = document.createElement('div');
   text.className = 'swiper-card-text';
-  text.textContent = task.text;
+  appendSwiperTaskTitleWithRecurringMarker(text, task);
 
   const nextStepText = getNextStepPreviewText(task);
   const nextStep = document.createElement('div');
@@ -280,6 +280,18 @@ function createCardElement(task) {
   card.appendChild(content);
   
   return card;
+}
+
+function appendSwiperTaskTitleWithRecurringMarker(container, task) {
+  container.textContent = task?.text || '';
+  if (task?.isRecurringParticipation !== true) {
+    return;
+  }
+  const marker = document.createElement('span');
+  marker.className = 'task-recurring-indicator';
+  marker.textContent = '↻';
+  marker.setAttribute('aria-hidden', 'true');
+  container.appendChild(marker);
 }
 
 function getNextStepPreviewText(task) {

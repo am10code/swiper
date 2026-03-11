@@ -9,6 +9,7 @@ class StorageManager {
         defaultCategory: '',
         showCompleted: true,
         taskDisplayMode: 'all', // 'all' или 'today'
+        logCompletedSteps: false,
         globalPomodoroSettings: {
           interval: 25, // минут
           shortBreak: 5, // минут
@@ -49,6 +50,9 @@ class StorageManager {
           if (!mergedData.settings.taskDisplayMode) {
             mergedData.settings.taskDisplayMode = this.defaultData.settings.taskDisplayMode;
           }
+          if (typeof mergedData.settings.logCompletedSteps !== 'boolean') {
+            mergedData.settings.logCompletedSteps = this.defaultData.settings.logCompletedSteps;
+          }
 
           // Инициализируем новые поля для существующих задач
           if (mergedData.tasks && Array.isArray(mergedData.tasks)) {
@@ -61,7 +65,9 @@ class StorageManager {
               pomodoroSettings: task.pomodoroSettings !== undefined ? task.pomodoroSettings : null,
               link: task.link || null,
               completedAt: task.completedAt || null,
-              swiperHiddenUntil: task.swiperHiddenUntil || null
+              swiperHiddenUntil: task.swiperHiddenUntil || null,
+              isRecurringParticipation: task.isRecurringParticipation === true,
+              recurrenceDays: Math.max(1, Number(task.recurrenceDays) || 3)
             }));
           }
 
@@ -132,7 +138,9 @@ class StorageManager {
       pomodoroSettings: null, // null означает использование глобальных настроек
       link: null,
       completedAt: null,
-      swiperHiddenUntil: null
+      swiperHiddenUntil: null,
+      isRecurringParticipation: false,
+      recurrenceDays: 3
     };
     tasks.push(newTask);
     await this.saveTasks(tasks);
@@ -176,6 +184,12 @@ class StorageManager {
       }
       if (!task.hasOwnProperty('swiperHiddenUntil')) {
         task.swiperHiddenUntil = null;
+      }
+      if (!task.hasOwnProperty('isRecurringParticipation')) {
+        task.isRecurringParticipation = false;
+      }
+      if (!task.hasOwnProperty('recurrenceDays')) {
+        task.recurrenceDays = 3;
       }
 
       tasks[index] = {

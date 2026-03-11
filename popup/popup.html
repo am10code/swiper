@@ -217,7 +217,16 @@
               <div class="deadline-quick-actions">
                 <button type="button" class="btn-secondary deadline-quick-btn" data-target="taskCardEditDeadline" data-offset="0">Сегодня</button>
                 <button type="button" class="btn-secondary deadline-quick-btn" data-target="taskCardEditDeadline" data-offset="1">Завтра</button>
+                <button type="button" class="btn-secondary deadline-quick-btn" data-target="taskCardEditDeadline" data-action="next-monday">На следующей неделе</button>
               </div>
+              <label class="task-card-recurring-toggle">
+                <input type="checkbox" id="taskCardEditRecurringParticipation">
+                Регулярное участие
+              </label>
+              <label class="task-card-recurring-period" id="taskCardEditRecurrenceDaysWrap">
+                Период (дней):
+                <input type="number" id="taskCardEditRecurrenceDays" min="1" step="1" value="3" class="task-card-edit-date">
+              </label>
             </div>
           </div>
 
@@ -322,6 +331,7 @@
           <button id="taskCardOptionNextWeekBtn">Перенести на следующую неделю</button>
           <button id="taskCardOptionHideSwiper3Days">Не показывать в свайпере 3 дня</button>
           <button id="taskCardOptionHideSwiper1Week">Не показывать в свайпере 1 неделю</button>
+          <button id="taskCardOptionCompleteBtn">Отметить задачу выполненной</button>
           <button id="taskCardOptionEditBtn">Редактировать</button>
           <button id="taskCardOptionDeleteBtn" class="danger">Удалить</button>
         </div>
