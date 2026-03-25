@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Todo Расширение",
-  "version": "2.1.1.5",
+  "version": "3.0.0.0",
   "description": "Простое и удобное todo приложение для браузера",
   "permissions": [
     "storage",
