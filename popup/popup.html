@@ -333,6 +333,7 @@
           <button id="taskCardOptionHideSwiper1Week">Не показывать в свайпере 1 неделю</button>
           <button id="taskCardOptionCompleteBtn">Отметить задачу выполненной</button>
           <button id="taskCardOptionEditBtn">Редактировать</button>
+          <button id="taskCardOptionResetPriorityWeightBtn" type="button">Сбросить вес задачи</button>
           <button id="taskCardOptionDeleteBtn" class="danger">Удалить</button>
         </div>
       </div>
@@ -358,8 +359,12 @@
     </div>
   </div>
 
+  <script src="../shared/logger.js"></script>
+  <script src="../shared/date-utils.js"></script>
+  <script src="modules/dialog-service.js"></script>
   <script src="storage.js"></script>
   <script src="modules/import-export.js"></script>
+  <script src="modules/prioritization.js"></script>
   <script src="popup.js"></script>
   <script src="task-card.js"></script>
 </body>

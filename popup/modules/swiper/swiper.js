@@ -1,4 +1,11 @@
 // Модуль для работы с ТаскСвайпер
+(function () {
+  var _logger = typeof window !== 'undefined' && window.logger
+    ? window.logger
+    : { debug: function () {}, info: function () {}, warn: function () {}, error: function () { console.error.apply(console, arguments); } };
+  window.__swiperLogger = _logger;
+})();
+var logger = window.__swiperLogger || { debug: function () {}, info: function () {}, warn: function () {}, error: function () {} };
 
 let swiperStorage;
 let swiperTasks = [];
@@ -13,7 +20,9 @@ let currentCard = null;
 let isProcessingSwipe = false; // Флаг для предотвращения множественных вызовов
 let justFinishedSwipe = false; // Флаг для игнорирования click после завершения свайпа
 let isSwiperShortcutsReady = false;
+let isSwiperButtonsReady = false;
 let swiperPendingDeleteTaskId = null;
+let lastPriorityPromptRefreshTs = 0;
 
 // Функция для установки storage извне
 function setSwiperStorage(storageInstance) {
@@ -39,6 +48,7 @@ async function initSwiper() {
     await swiperStorage.clearSessionPostponed();
     
     const allTasks = await swiperStorage.getTasks();
+    refreshPriorityPromptInSwiper(allTasks, true);
     
     // Фильтруем активные задачи (все, кроме выполненных)
     const now = Date.now();
@@ -73,7 +83,7 @@ async function initSwiper() {
     // showCurrentCard() вызовет updateProgress() после корректировки индекса
     showCurrentCard();
   } catch (error) {
-    console.error('Error initializing Swiper:', error);
+    logger.error('Error initializing Swiper:', error);
     const container = document.getElementById('swiperCardContainer');
     const emptyState = document.getElementById('swiperEmptyState');
     if (container) container.innerHTML = '';
@@ -82,6 +92,22 @@ async function initSwiper() {
       emptyState.innerHTML = `<p>Ошибка загрузки: ${error.message}</p>`;
     }
   }
+}
+
+function hasUnrankedActiveTasks(tasks) {
+  return (tasks || []).some(task => task && task.completed !== true && !Number.isFinite(task.priorityRank));
+}
+
+async function refreshPriorityPromptInSwiper(preloadedTasks, force) {
+  const button = document.getElementById('priorityPromptBtn');
+  if (!button || !swiperStorage) return;
+
+  const now = Date.now();
+  if (!force && now - lastPriorityPromptRefreshTs < 1000) return;
+  lastPriorityPromptRefreshTs = now;
+
+  const tasks = Array.isArray(preloadedTasks) ? preloadedTasks : await swiperStorage.getTasks();
+  button.style.display = hasUnrankedActiveTasks(tasks) ? 'inline-flex' : 'none';
 }
 
 // Перемешивание массива
@@ -97,18 +123,18 @@ function shuffleArray(array) {
 // Показать текущую карточку
 let lastShownIndex = -1;
 function showCurrentCard() {
-  console.log('[Swiper] showCurrentCard: called with index', currentTaskIndex, 'of', swiperTasks.length, '(lastShown:', lastShownIndex, ')');
+  logger.debug('[Swiper] showCurrentCard: called with index', currentTaskIndex, 'of', swiperTasks.length, '(lastShown:', lastShownIndex, ')');
   
   const container = document.getElementById('swiperCardContainer');
   const emptyState = document.getElementById('swiperEmptyState');
   
   if (!container) {
-    console.log('[Swiper] showCurrentCard: container not found');
+    logger.debug('[Swiper] showCurrentCard: container not found');
     return;
   }
   
   if (swiperTasks.length === 0) {
-    console.log('[Swiper] showCurrentCard: no tasks');
+    logger.debug('[Swiper] showCurrentCard: no tasks');
     ensureSwiperSideButtons(container);
     clearSwiperCards(container);
     setSwiperEmptyState(true, 'Нет активных задач для обработки');
@@ -117,10 +143,10 @@ function showCurrentCard() {
   
   // Проверяем, все ли задачи обработаны (ПЕРЕД корректировкой индекса)
   if (currentTaskIndex >= swiperTasks.length) {
-    console.log('[Swiper] showCurrentCard: all tasks processed!');
+    logger.debug('[Swiper] showCurrentCard: all tasks processed!');
     // Если уже показываем сообщение о завершении, не делаем ничего
     if (emptyState && emptyState.style.display === 'block' && emptyState.textContent.includes('обработаны')) {
-      console.log('[Swiper] showCurrentCard: already showing completion message');
+      logger.debug('[Swiper] showCurrentCard: already showing completion message');
       return;
     }
     
@@ -129,7 +155,7 @@ function showCurrentCard() {
     setSwiperEmptyState(true, 'Все задачи обработаны');
     // Обновляем прогресс только один раз при завершении
     updateProgress();
-    console.log('[Swiper] showCurrentCard: calling finishSwiper in 2 seconds');
+    logger.debug('[Swiper] showCurrentCard: calling finishSwiper in 2 seconds');
     setTimeout(() => {
       finishSwiper();
     }, 2000);
@@ -147,18 +173,18 @@ function showCurrentCard() {
   
   // Если индекс не изменился после корректировки, пропускаем (защита от повторных вызовов с тем же индексом)
   if (lastShownIndex === currentTaskIndex) {
-    console.log('[Swiper] showCurrentCard: skipped - same index');
+    logger.debug('[Swiper] showCurrentCard: skipped - same index');
     return;
   }
   
   lastShownIndex = currentTaskIndex;
-  console.log('[Swiper] showCurrentCard: showing card for index', currentTaskIndex);
+  logger.debug('[Swiper] showCurrentCard: showing card for index', currentTaskIndex);
   
   setSwiperEmptyState(false);
   const task = swiperTasks[currentTaskIndex];
   
   if (!task) {
-    console.error('Task not found at index', currentTaskIndex, 'Total tasks:', swiperTasks.length);
+    logger.error('Task not found at index', currentTaskIndex, 'Total tasks:', swiperTasks.length);
     // Если задача не найдена, но индекс в пределах массива, попробуем перейти к следующей
     if (currentTaskIndex < swiperTasks.length - 1) {
       currentTaskIndex++;
@@ -205,7 +231,7 @@ function showCurrentCard() {
     if (typeof window.openTaskCard === 'function') {
       window.openTaskCard(task.id);
     } else {
-      console.warn('openTaskCard не найдена. Убедитесь, что task-card.js загружен.');
+      logger.warn('openTaskCard не найдена. Убедитесь, что task-card.js загружен.');
     }
   });
   
@@ -317,24 +343,27 @@ function getSwiperPriorityLabel(priority) {
   return labels[priority] || priority;
 }
 
-// Форматирование дедлайна (используем функцию из popup.js если доступна)
+// Форматирование дедлайна (dateUtils или popup.formatDeadline)
 function getSwiperDeadline(deadline) {
+  if (typeof window !== 'undefined' && window.dateUtils && window.dateUtils.formatDeadline) {
+    return window.dateUtils.formatDeadline(deadline);
+  }
   if (typeof formatDeadline === 'function') {
     return formatDeadline(deadline);
   }
   if (!deadline) return '';
-  const deadlineDate = new Date(deadline);
-  const today = new Date();
+  var deadlineDate = window.dateUtils ? window.dateUtils.parseLocalDateKey(deadline) : new Date(deadline);
+  if (!deadlineDate || (deadlineDate.getTime && Number.isNaN(deadlineDate.getTime()))) return '';
+  var today = new Date();
   today.setHours(0, 0, 0, 0);
-  const diffTime = deadlineDate - today;
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-  if (diffDays < 0) return `Просрочено на ${Math.abs(diffDays)} дн.`;
+  if (deadlineDate.setHours) deadlineDate.setHours(0, 0, 0, 0);
+  var diffTime = deadlineDate.getTime ? deadlineDate.getTime() - today.getTime() : deadlineDate - today;
+  var diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return 'Просрочено на ' + Math.abs(diffDays) + ' дн.';
   if (diffDays === 0) return 'Сегодня';
   if (diffDays === 1) return 'Завтра';
-  if (diffDays <= 7) return `Через ${diffDays} дн.`;
-  
-  return deadlineDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+  if (diffDays <= 7) return 'Через ' + diffDays + ' дн.';
+  return (deadlineDate.toLocaleDateString && deadlineDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })) || deadline;
 }
 
 // Настройка обработчиков свайпа
@@ -361,7 +390,7 @@ function handleTouchStart(e) {
 }
 
 function handleMouseDown(e) {
-  console.log('[Swiper] MOUSEDOWN:', {
+  logger.debug('[Swiper] MOUSEDOWN:', {
     isSwiping: isSwiping,
     target: e.target.tagName,
     closestBtn: !!e.target.closest('.swiper-action-btn')
@@ -370,14 +399,14 @@ function handleMouseDown(e) {
   if (isSwiping) return;
   // Не начинаем свайп, если клик был на кнопках действий
   if (e.target.closest('.swiper-action-btn')) {
-    console.log('[Swiper] MOUSEDOWN: ignored - button');
+    logger.debug('[Swiper] MOUSEDOWN: ignored - button');
     return;
   }
   isSwiping = true;
   startX = e.clientX;
   startY = e.clientY;
   currentCard = e.currentTarget;
-  console.log('[Swiper] MOUSEDOWN: started swipe, startX:', startX, 'startY:', startY);
+  logger.debug('[Swiper] MOUSEDOWN: started swipe, startX:', startX, 'startY:', startY);
   e.preventDefault();
 }
 
@@ -393,7 +422,7 @@ function handleMouseMove(e) {
   if (!isSwiping || !currentCard) return;
   currentX = e.clientX;
   currentY = e.clientY;
-  console.log('[Swiper] MOUSEMOVE: currentX:', currentX, 'startX:', startX, 'deltaX:', currentX - startX);
+  logger.debug('[Swiper] MOUSEMOVE: currentX:', currentX, 'startX:', startX, 'deltaX:', currentX - startX);
   updateCardPosition();
   e.preventDefault();
 }
@@ -431,7 +460,7 @@ function handleTouchEnd(e) {
 }
 
 function handleMouseUp(e) {
-  console.log('[Swiper] MOUSEUP:', {
+  logger.debug('[Swiper] MOUSEUP:', {
     isSwiping: isSwiping,
     hasCurrentCard: !!currentCard,
     currentX: currentX,
@@ -442,7 +471,7 @@ function handleMouseUp(e) {
   });
   
   if (!isSwiping || !currentCard) {
-    console.log('[Swiper] MOUSEUP: ignored - not swiping or no card');
+    logger.debug('[Swiper] MOUSEUP: ignored - not swiping or no card');
     return;
   }
   
@@ -452,7 +481,7 @@ function handleMouseUp(e) {
     // Это был простой клик без движения - используем координаты из события для расчета
     currentX = e.clientX;
     currentY = e.clientY;
-    console.log('[Swiper] MOUSEUP: no mouse move detected, using event coordinates:', currentX);
+    logger.debug('[Swiper] MOUSEUP: no mouse move detected, using event coordinates:', currentX);
   }
   
   finishSwipe();
@@ -466,7 +495,7 @@ function finishSwipe() {
   const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
   const minSwipeDistance = 50;
   
-  console.log('[Swiper] finishSwipe:', {
+  logger.debug('[Swiper] finishSwipe:', {
     deltaX: deltaX,
     deltaY: deltaY,
     distance: distance.toFixed(2),
@@ -480,33 +509,33 @@ function finishSwipe() {
     if (Math.abs(deltaX) > minSwipeDistance) {
       if (deltaX < 0) {
         // Свайп влево - отложить
-        console.log('[Swiper] finishSwipe: swipe left');
+        logger.debug('[Swiper] finishSwipe: swipe left');
         handleSwipeLeft();
       } else {
         // Свайп вправо - запланировать
-        console.log('[Swiper] finishSwipe: swipe right');
+        logger.debug('[Swiper] finishSwipe: swipe right');
         handleSwipeRight();
       }
       // Сбрасываем флаг через задержку после обработки свайпа
       setTimeout(() => {
         justFinishedSwipe = false;
-        console.log('[Swiper] finishSwipe: justFinishedSwipe reset');
+        logger.debug('[Swiper] finishSwipe: justFinishedSwipe reset');
       }, 200);
     } else {
       // Был свайп, но не влево/вправо - просто возвращаем карточку
-      console.log('[Swiper] finishSwipe: swipe but not left/right, resetting');
+      logger.debug('[Swiper] finishSwipe: swipe but not left/right, resetting');
       currentCard.style.transform = '';
       currentCard.style.transition = 'transform 0.2s ease-out';
       currentCard.classList.remove('swiping-left', 'swiping-right');
       // Сбрасываем флаг через небольшую задержку, чтобы click успел сработать
       setTimeout(() => {
         justFinishedSwipe = false;
-        console.log('[Swiper] finishSwipe: justFinishedSwipe reset (non-directional swipe)');
+        logger.debug('[Swiper] finishSwipe: justFinishedSwipe reset (non-directional swipe)');
       }, 100);
     }
   } else {
     // Просто клик без движения - ничего не делаем
-    console.log('[Swiper] finishSwipe: just click, resetting');
+    logger.debug('[Swiper] finishSwipe: just click, resetting');
     currentCard.style.transform = '';
     currentCard.style.transition = 'transform 0.2s ease-out';
     currentCard.classList.remove('swiping-left', 'swiping-right');
@@ -524,7 +553,7 @@ function finishSwipe() {
 // Обработка свайпа влево (отложить)
 async function handleSwipeLeft() {
   if (isProcessingSwipe || currentTaskIndex >= swiperTasks.length) {
-    console.log('[Swiper] handleSwipeLeft: skipped (isProcessing:', isProcessingSwipe, ', index:', currentTaskIndex, ', total:', swiperTasks.length, ')');
+    logger.debug('[Swiper] handleSwipeLeft: skipped (isProcessing:', isProcessingSwipe, ', index:', currentTaskIndex, ', total:', swiperTasks.length, ')');
     return;
   }
   
@@ -532,7 +561,7 @@ async function handleSwipeLeft() {
   const task = swiperTasks[currentTaskIndex];
   const taskId = task.id;
   
-  console.log('[Swiper] handleSwipeLeft: processing task', currentTaskIndex + 1, 'of', swiperTasks.length, '(id:', taskId, ')');
+  logger.debug('[Swiper] handleSwipeLeft: processing task', currentTaskIndex + 1, 'of', swiperTasks.length, '(id:', taskId, ')');
   
   // Сохраняем состояние для отмены
   actionHistory.push({
@@ -557,7 +586,7 @@ async function handleSwipeLeft() {
   // Переход к следующей карточке
   setTimeout(() => {
     currentTaskIndex++;
-    console.log('[Swiper] handleSwipeLeft: moving to next card, new index:', currentTaskIndex, 'of', swiperTasks.length);
+    logger.debug('[Swiper] handleSwipeLeft: moving to next card, new index:', currentTaskIndex, 'of', swiperTasks.length);
     showCurrentCard();
     isProcessingSwipe = false;
   }, 200);
@@ -566,7 +595,7 @@ async function handleSwipeLeft() {
 // Обработка свайпа вправо (запланировать)
 async function handleSwipeRight() {
   if (isProcessingSwipe || currentTaskIndex >= swiperTasks.length) {
-    console.log('[Swiper] handleSwipeRight: skipped (isProcessing:', isProcessingSwipe, ', index:', currentTaskIndex, ', total:', swiperTasks.length, ')');
+    logger.debug('[Swiper] handleSwipeRight: skipped (isProcessing:', isProcessingSwipe, ', index:', currentTaskIndex, ', total:', swiperTasks.length, ')');
     return;
   }
   
@@ -574,7 +603,7 @@ async function handleSwipeRight() {
   const task = swiperTasks[currentTaskIndex];
   const taskId = task.id;
   
-  console.log('[Swiper] handleSwipeRight: processing task', currentTaskIndex + 1, 'of', swiperTasks.length, '(id:', taskId, ')');
+  logger.debug('[Swiper] handleSwipeRight: processing task', currentTaskIndex + 1, 'of', swiperTasks.length, '(id:', taskId, ')');
   
   // Сохраняем состояние для отмены
   actionHistory.push({
@@ -598,7 +627,7 @@ async function handleSwipeRight() {
   // Переход к следующей карточке
   setTimeout(() => {
     currentTaskIndex++;
-    console.log('[Swiper] handleSwipeRight: moving to next card, new index:', currentTaskIndex, 'of', swiperTasks.length);
+    logger.debug('[Swiper] handleSwipeRight: moving to next card, new index:', currentTaskIndex, 'of', swiperTasks.length);
     showCurrentCard();
     isProcessingSwipe = false;
   }, 200);
@@ -619,17 +648,20 @@ async function postponeTask(taskId) {
 
 // Запланировать на сегодня
 async function scheduleToday(taskId) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayStr = getDateKeyLocal(today);
+  var todayStr = (typeof window !== 'undefined' && window.dateUtils && window.dateUtils.todayKey)
+    ? window.dateUtils.todayKey()
+    : getDateKeyLocal(new Date());
   await swiperStorage.updateTask(taskId, { deadline: todayStr });
 }
 
 function getDateKeyLocal(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  if (typeof window !== 'undefined' && window.dateUtils && window.dateUtils.getDateKey) {
+    return window.dateUtils.getDateKey(date);
+  }
+  var year = date.getFullYear();
+  var month = String(date.getMonth() + 1).padStart(2, '0');
+  var day = String(date.getDate()).padStart(2, '0');
+  return year + '-' + month + '-' + day;
 }
 
 // Отменить последнее действие
@@ -664,6 +696,7 @@ async function undoLastAction() {
         // Задача уже есть, просто переходим к ней
         currentTaskIndex = existingIndex;
       }
+      lastShownIndex = -1;
       updateProgress();
       showCurrentCard();
     }
@@ -686,6 +719,7 @@ async function undoLastAction() {
         // Задача уже есть, просто переходим к ней
         currentTaskIndex = existingIndex;
       }
+      lastShownIndex = -1;
       updateProgress();
       showCurrentCard();
     }
@@ -721,7 +755,7 @@ function updateProgress() {
 
 // Завершение ТаскСвайпер
 async function finishSwiper() {
-  console.log('[Swiper] finishSwiper: called');
+  logger.debug('[Swiper] finishSwiper: called');
   if (swiperStorage) {
     await swiperStorage.clearSessionPostponed();
   }
@@ -732,17 +766,14 @@ async function finishSwiper() {
     clearSwiperCards(container);
   }
   setSwiperEmptyState(true, 'Все задачи обработаны');
-  console.log('[Swiper] finishSwiper: completion message shown');
-}
-
-// Проверка на часто откладываемые
-async function checkIfFrequentlyPostponed(task) {
-  const settings = await swiperStorage.getSwiperSettings();
-  return (task.postponeCount || 0) >= (settings.postponeThreshold || 5);
+  logger.debug('[Swiper] finishSwiper: completion message shown');
 }
 
 // Инициализация обработчиков кнопок
 function setupSwiperButtons() {
+  if (isSwiperButtonsReady) return;
+  isSwiperButtonsReady = true;
+
   const postponeBtn = document.getElementById('postponeBtn');
   const scheduleBtn = document.getElementById('scheduleBtn');
   const undoBtn = document.getElementById('undoBtn');
@@ -752,6 +783,7 @@ function setupSwiperButtons() {
   const deleteCancelBtn = document.getElementById('swiperDeleteCancelBtn');
   const deleteConfirmBtn = document.getElementById('swiperDeleteConfirmBtn');
   const backToTasksBtn = document.getElementById('swiperBackToTasksBtn');
+  const priorityPromptBtn = document.getElementById('priorityPromptBtn');
   
   if (postponeBtn) {
     postponeBtn.addEventListener('click', () => {
@@ -776,11 +808,9 @@ function setupSwiperButtons() {
   }
   
   if (editBtn) {
-    editBtn.addEventListener('click', () => {
+    editBtn.addEventListener('click', async () => {
       if (currentTaskIndex < swiperTasks.length) {
-        const task = swiperTasks[currentTaskIndex];
-        // В отдельной вкладке редактирование недоступно
-        alert('Для редактирования задачи откройте основное окно расширения');
+        await window.dialogService.showAlert('Для редактирования задачи откройте основное окно расширения');
       }
     });
   }
@@ -811,6 +841,18 @@ function setupSwiperButtons() {
         window.location.href = chrome.runtime.getURL('main.html#tasks');
       } else {
         window.location.hash = 'tasks';
+      }
+    });
+  }
+
+  if (priorityPromptBtn) {
+    priorityPromptBtn.addEventListener('click', () => {
+      if (window.location.pathname.includes('swiper.html')) {
+        window.location.href = chrome.runtime.getURL('main.html#prioritization');
+      } else if (typeof window.switchSection === 'function') {
+        window.switchSection('prioritization');
+      } else {
+        window.location.hash = 'prioritization';
       }
     });
   }
@@ -1066,10 +1108,12 @@ async function confirmSwiperDelete() {
     currentCard.style.transform = 'scale(0.95)';
   }
   await swiperStorage.deleteTask(taskId);
+  refreshPriorityPromptInSwiper(null, true);
   swiperTasks = swiperTasks.filter(task => task.id !== taskId);
   if (currentTaskIndex >= swiperTasks.length && swiperTasks.length > 0) {
     currentTaskIndex = swiperTasks.length - 1;
   }
+  lastShownIndex = -1;
   updateProgress();
   setTimeout(() => {
     showCurrentCard();
@@ -1081,17 +1125,3 @@ window.initSwiper = initSwiper;
 window.setSwiperStorage = setSwiperStorage;
 window.setupSwiperButtons = setupSwiperButtons;
 window.setupSwiperShortcuts = setupSwiperShortcuts;
-
-// Инициализация при загрузке (только для swiper.html)
-document.addEventListener('DOMContentLoaded', () => {
-  // Инициализируем только если мы на странице swiper.html
-  const isSwiperPage = window.location.pathname.includes('swiper.html');
-  if (isSwiperPage) {
-    if (typeof StorageManager !== 'undefined' && !swiperStorage) {
-      swiperStorage = new StorageManager();
-    }
-    if (typeof setupSwiperButtons === 'function') {
-      setupSwiperButtons();
-    }
-  }
-});

@@ -35,7 +35,13 @@
   <div class="container">
     <header class="header">
       <button id="burgerMenuBtn" class="burger-menu-btn" title="Меню">☰</button>
-      <h1>Мои Задачи</h1>
+      <div class="header-center">
+        <button id="flowBtn" class="flow-btn" type="button" title="Режим ФЛОУ" aria-label="Режим ФЛОУ">✨ ФЛОУ</button>
+      </div>
+      <span id="headerTitle" class="header-title" aria-live="polite"></span>
+      <button id="priorityPromptBtn" class="priority-prompt-btn" title="Приоритизация задач" aria-label="Приоритизация задач" style="display: none;">
+        <span class="priority-prompt-dots" aria-hidden="true">🪄</span>
+      </button>
       <button id="settingsBtn" class="settings-btn" title="Настройки">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" width="20" height="20">
           <path style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;" d="M46.999,27.708v-5.5l-6.546-1.07c-0.388-1.55-0.996-3.007-1.798-4.342l3.815-5.437L38.58,7.472l-5.368,3.859c-1.338-0.81-2.805-1.428-4.366-1.817L27.706,3h-5.5l-1.06,6.492c-1.562,0.383-3.037,0.993-4.379,1.799l-5.352-3.824l-3.889,3.887l3.765,5.384c-0.814,1.347-1.433,2.82-1.826,4.392l-6.464,1.076v5.5l6.457,1.145c0.39,1.568,1.009,3.041,1.826,4.391l-3.816,5.337l3.887,3.891l5.391-3.776c1.346,0.808,2.817,1.423,4.379,1.808L22.206,47h5.5l1.156-6.513c1.554-0.394,3.022-1.013,4.355-1.824l5.428,3.809l3.888-3.891l-3.875-5.38c0.802-1.335,1.411-2.794,1.795-4.344L46.999,27.708z"/>
@@ -68,10 +74,32 @@
           <span>⏰</span>
           <span>Часто откладываемые</span>
         </button>
+        <button class="burger-menu-item" data-section="flow">
+          <span>✨</span>
+          <span>ФЛОУ</span>
+        </button>
         <button class="burger-menu-item" data-section="settings">
           <span>⚙️</span>
           <span>Настройки</span>
         </button>
+      </div>
+    </div>
+
+    <!-- Режим ФЛОУ: полноэкранная одна задача -->
+    <div class="flow-section" id="flowSection" style="display: none;">
+      <div id="flowEmptyState" class="empty-state" style="display: none;">
+        <p>Нет активных задач</p>
+      </div>
+    </div>
+
+    <!-- Поиск и фильтры -->
+    <div class="prioritization-section" id="prioritizationSection" style="display: none;">
+      <h2 class="section-title">Что важнее</h2>
+      <p class="prioritization-subtitle">Выберите более важную задачу</p>
+      <div class="prioritization-stack" id="prioritizationStack"></div>
+      <div id="prioritizationProgress" class="prioritization-progress" style="display: none;"></div>
+      <div id="prioritizationEmptyState" class="empty-state" style="display: none;">
+        <p>Все активные задачи уже приоритизированы.</p>
       </div>
     </div>
 
@@ -97,25 +125,54 @@
       <h2 class="section-title">Настройки</h2>
       <div class="settings-section">
         <h3 class="settings-section-title">Настройки помодоро</h3>
-        <div class="pomodoro-settings">
-          <label>
-            Интервал (мин):
-            <input type="number" id="pomodoroInterval" min="15" max="120" value="25" class="pomodoro-setting-input">
-          </label>
-          <label>
-            Короткий перерыв (мин):
-            <input type="number" id="pomodoroShortBreak" min="1" max="30" value="5" class="pomodoro-setting-input">
-          </label>
-          <label>
-            Длинный перерыв (мин):
-            <input type="number" id="pomodoroLongBreak" min="5" max="60" value="15" class="pomodoro-setting-input">
-          </label>
-          <label>
-            Длинный перерыв после:
-            <input type="number" id="pomodoroLongBreakAfter" min="2" max="10" value="4" class="pomodoro-setting-input">
-            сессий
-          </label>
-          <button id="pomodoroSaveSettingsBtn" class="btn-secondary pomodoro-save-btn">Сохранить настройки</button>
+        <div class="pomodoro-settings pomodoro-settings-form">
+          <p class="pomodoro-settings-hint">Подберите ритм работы и перерывов под свой темп. Все значения задаются в минутах, кроме частоты длинного перерыва.</p>
+          <div class="pomodoro-settings-grid">
+            <label class="pomodoro-setting-row" for="pomodoroInterval">
+              <span class="pomodoro-setting-meta">
+                <span class="pomodoro-setting-title">Фокус-сессия</span>
+                <span class="pomodoro-setting-caption">Длительность одного рабочего интервала.</span>
+              </span>
+              <span class="pomodoro-input-wrap">
+                <input type="number" id="pomodoroInterval" min="15" max="120" value="25" class="pomodoro-setting-input">
+                <span class="pomodoro-input-unit">мин</span>
+              </span>
+            </label>
+            <label class="pomodoro-setting-row" for="pomodoroShortBreak">
+              <span class="pomodoro-setting-meta">
+                <span class="pomodoro-setting-title">Короткий перерыв</span>
+                <span class="pomodoro-setting-caption">Пауза между фокус-сессиями.</span>
+              </span>
+              <span class="pomodoro-input-wrap">
+                <input type="number" id="pomodoroShortBreak" min="1" max="30" value="5" class="pomodoro-setting-input">
+                <span class="pomodoro-input-unit">мин</span>
+              </span>
+            </label>
+            <label class="pomodoro-setting-row" for="pomodoroLongBreak">
+              <span class="pomodoro-setting-meta">
+                <span class="pomodoro-setting-title">Длинный перерыв</span>
+                <span class="pomodoro-setting-caption">Восстановление после серии фокус-сессий.</span>
+              </span>
+              <span class="pomodoro-input-wrap">
+                <input type="number" id="pomodoroLongBreak" min="5" max="60" value="15" class="pomodoro-setting-input">
+                <span class="pomodoro-input-unit">мин</span>
+              </span>
+            </label>
+            <label class="pomodoro-setting-row" for="pomodoroLongBreakAfter">
+              <span class="pomodoro-setting-meta">
+                <span class="pomodoro-setting-title">Длинный перерыв после</span>
+                <span class="pomodoro-setting-caption">Сколько фокус-сессий пройти до длинного перерыва.</span>
+              </span>
+              <span class="pomodoro-input-wrap">
+                <input type="number" id="pomodoroLongBreakAfter" min="2" max="10" value="4" class="pomodoro-setting-input">
+                <span class="pomodoro-input-unit">сессий</span>
+              </span>
+            </label>
+          </div>
+          <div class="pomodoro-setting-actions">
+            <button id="pomodoroSaveSettingsBtn" class="btn-secondary pomodoro-save-btn">Сохранить настройки</button>
+            <span id="pomodoroSaveStatus" class="pomodoro-save-status" aria-live="polite"></span>
+          </div>
         </div>
       </div>
       <div class="settings-section">
@@ -124,6 +181,19 @@
           <label class="log-settings-option">
             <input type="checkbox" id="logCompletedStepsToggle">
             Логировать выполнение шагов
+          </label>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h3 class="settings-section-title">Добавление задач</h3>
+        <div class="radio-group">
+          <label class="radio-option">
+            <input type="radio" name="taskCreationMode" value="bottom" checked>
+            <span>Поле внизу</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="taskCreationMode" value="fab">
+            <span>FAB</span>
           </label>
         </div>
       </div>
@@ -224,6 +294,9 @@
           </div>
         </form>
       </div>
+      <button type="button" id="addTaskFab" class="add-task-fab" title="Добавить задачу" aria-label="Добавить задачу">
+        +
+      </button>
     </div>
 
     <!-- Раздел выполненных задач -->
@@ -304,18 +377,6 @@
               </g>
             </svg>
           </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Подтверждение удаления задачи (Свайпер) -->
-    <div id="swiperDeleteModal" class="modal" style="display: none;">
-      <div class="modal-content">
-        <h2>Удаление задачи</h2>
-        <p id="swiperDeleteMessage"></p>
-        <div class="modal-actions">
-          <button type="button" id="swiperDeleteCancelBtn" class="btn-secondary">Отмена</button>
-          <button type="button" id="swiperDeleteConfirmBtn" class="btn-danger">Удалить</button>
         </div>
       </div>
     </div>
@@ -528,6 +589,7 @@
           <button id="taskCardOptionHideSwiper1Week">Не показывать в свайпере 1 неделю</button>
           <button id="taskCardOptionCompleteBtn">Отметить задачу выполненной</button>
           <button id="taskCardOptionEditBtn">Редактировать</button>
+          <button id="taskCardOptionResetPriorityWeightBtn" type="button">Сбросить вес задачи</button>
           <button id="taskCardOptionDeleteBtn" class="danger">Удалить</button>
         </div>
       </div>
@@ -565,8 +627,12 @@
     </div>
   </div>
 
+  <script src="shared/logger.js"></script>
+  <script src="shared/date-utils.js"></script>
+  <script src="popup/modules/dialog-service.js"></script>
   <script src="popup/storage.js"></script>
   <script src="popup/modules/import-export.js"></script>
+  <script src="popup/modules/prioritization.js"></script>
   <script src="popup/popup.js"></script>
   <script src="popup/task-card.js"></script>
   <script src="popup/modules/swiper/swiper.js"></script>

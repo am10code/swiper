@@ -67,6 +67,7 @@ function toggleBurgerMenu(e) {
     e.preventDefault();
   }
   const burgerMenu = document.getElementById('burgerMenu');
+  if (!burgerMenu) return;
   const burgerMenuBtn = document.getElementById('burgerMenuBtn');
   const burgerMenuContent = document.querySelector('.burger-menu-content');
   const currentDisplay = window.getComputedStyle(burgerMenu).display;

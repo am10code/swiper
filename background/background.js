@@ -1,4 +1,5 @@
 // Background Service Worker для напоминаний о дедлайнах
+importScripts('../shared/logger.js', '../shared/date-utils.js');
 
 // Обработчик клика на иконку расширения
 chrome.action.onClicked.addListener((tab) => {
@@ -10,7 +11,7 @@ chrome.action.onClicked.addListener((tab) => {
 
 // Обработчик установки расширения
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('Todo расширение установлено');
+  self.logger.info('Todo расширение установлено');
   checkDeadlines();
 });
 
@@ -19,49 +20,95 @@ chrome.runtime.onStartup.addListener(() => {
   checkDeadlines();
 });
 
-// Проверка дедлайнов и создание напоминаний
-async function checkDeadlines() {
-  try {
-    const data = await chrome.storage.local.get(['tasks']);
-    const tasks = data.tasks || [];
+var DEADLINE_DEBOUNCE_MS = 400;
+var deadlineSyncTimer = null;
 
-    // Очистка старых напоминаний
-    const alarms = await chrome.alarms.getAll();
-    alarms.forEach(alarm => {
+function createAlarmsForTask(task, now, oneDay) {
+  if (!task || !task.deadline || task.completed) return;
+  var deadlineDate = dateUtils.parseLocalDateKey(task.deadline);
+  if (!deadlineDate || Number.isNaN(deadlineDate.getTime())) return;
+  var deadlineTime = deadlineDate.getTime();
+  var timeUntilDeadline = deadlineTime - now;
+
+  if (timeUntilDeadline > 0 && timeUntilDeadline <= oneDay * 2) {
+    var reminderTime = deadlineTime - oneDay;
+    if (reminderTime > now) {
+      chrome.alarms.create('deadline_' + task.id + '_reminder', { when: reminderTime });
+    }
+  }
+  if (timeUntilDeadline > 0 && timeUntilDeadline <= oneDay) {
+    chrome.alarms.create('deadline_' + task.id + '_today', { when: deadlineTime });
+  }
+}
+
+/**
+ * Инкрементальный sync: обновляет алармы только для задач, у которых изменились deadline или completed.
+ */
+async function syncDeadlineAlarmsIncremental(prevTasks, nextTasks) {
+  try {
+    var prev = prevTasks || [];
+    var next = nextTasks || [];
+    var prevMap = new Map(prev.map(function (t) { return [t.id, t]; }));
+    var nextMap = new Map(next.map(function (t) { return [t.id, t]; }));
+    var changedIds = new Set();
+    var allIds = new Set([].concat(Array.from(prevMap.keys()), Array.from(nextMap.keys())));
+    allIds.forEach(function (id) {
+      var p = prevMap.get(id);
+      var n = nextMap.get(id);
+      if (!p && n) changedIds.add(id);
+      else if (p && !n) changedIds.add(id);
+      else if (p && n && (p.deadline !== n.deadline || p.completed !== n.completed)) changedIds.add(id);
+    });
+
+    var alarms = await chrome.alarms.getAll();
+    alarms.forEach(function (alarm) {
+      if (!alarm.name.startsWith('deadline_')) return;
+      var parts = alarm.name.split('_');
+      var taskId = parts[1];
+      if (changedIds.has(taskId)) {
+        chrome.alarms.clear(alarm.name);
+      }
+    });
+
+    var now = Date.now();
+    var oneDay = 24 * 60 * 60 * 1000;
+    changedIds.forEach(function (taskId) {
+      var task = nextMap.get(taskId);
+      createAlarmsForTask(task, now, oneDay);
+    });
+  } catch (err) {
+    self.logger.error('Ошибка инкрементального sync дедлайнов:', err);
+  }
+}
+
+// Полная проверка дедлайнов (при старте/установке) или инкрементальный sync при наличии old/new
+async function checkDeadlines(prevTasks, nextTasks) {
+  try {
+    var tasks = nextTasks;
+    if (!tasks) {
+      var data = await chrome.storage.local.get(['tasks']);
+      tasks = data.tasks || [];
+    }
+
+    if (prevTasks && nextTasks) {
+      await syncDeadlineAlarmsIncremental(prevTasks, nextTasks);
+      return;
+    }
+
+    var alarms = await chrome.alarms.getAll();
+    alarms.forEach(function (alarm) {
       if (alarm.name.startsWith('deadline_')) {
         chrome.alarms.clear(alarm.name);
       }
     });
 
-    // Создание напоминаний для задач с дедлайнами
-    const now = Date.now();
-    const oneDay = 24 * 60 * 60 * 1000;
-
-    tasks.forEach(task => {
-      if (task.deadline && !task.completed) {
-        const deadlineTime = new Date(task.deadline).getTime();
-        const timeUntilDeadline = deadlineTime - now;
-
-        // Напоминание за день до дедлайна
-        if (timeUntilDeadline > 0 && timeUntilDeadline <= oneDay * 2) {
-          const reminderTime = deadlineTime - oneDay;
-          if (reminderTime > now) {
-            chrome.alarms.create(`deadline_${task.id}_reminder`, {
-              when: reminderTime
-            });
-          }
-        }
-
-        // Напоминание в день дедлайна
-        if (timeUntilDeadline > 0 && timeUntilDeadline <= oneDay) {
-          chrome.alarms.create(`deadline_${task.id}_today`, {
-            when: deadlineTime
-          });
-        }
-      }
+    var now = Date.now();
+    var oneDay = 24 * 60 * 60 * 1000;
+    tasks.forEach(function (task) {
+      createAlarmsForTask(task, now, oneDay);
     });
   } catch (error) {
-    console.error('Ошибка при проверке дедлайнов:', error);
+    self.logger.error('Ошибка при проверке дедлайнов:', error);
   }
 }
 
@@ -76,10 +123,10 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
       const task = tasks.find(t => t.id === taskId);
 
       if (task && !task.completed) {
-        const deadlineDate = new Date(task.deadline);
-        const now = new Date();
-        const isOverdue = deadlineDate < now;
-        const isToday = deadlineDate.toDateString() === now.toDateString();
+        const todayKey = dateUtils.todayKey();
+        const cmp = dateUtils.compareDateKeys(task.deadline, todayKey);
+        const isOverdue = cmp < 0;
+        const isToday = cmp === 0;
 
         let message = '';
         if (isOverdue) {
@@ -100,7 +147,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
         });
       }
     } catch (error) {
-      console.error('Ошибка при обработке напоминания:', error);
+      self.logger.error('Ошибка при обработке напоминания:', error);
     }
   } else if (alarm.name.startsWith('pomodoro_')) {
     // Обработка помодоро-таймера
@@ -123,7 +170,7 @@ async function handlePomodoroAlarm(alarm) {
       await handlePomodoroSessionEnd(taskId);
     }
   } catch (error) {
-    console.error('Ошибка при обработке помодоро-аларма:', error);
+    self.logger.error('Ошибка при обработке помодоро-аларма:', error);
   }
 }
 
@@ -208,7 +255,7 @@ async function handlePomodoroSessionEnd(taskId) {
       await startPomodoroBreak(taskId, breakDuration);
     }
   } catch (error) {
-    console.error('Ошибка при завершении помодоро-сессии:', error);
+    self.logger.error('Ошибка при завершении помодоро-сессии:', error);
   }
 }
 
@@ -233,7 +280,7 @@ async function handlePomodoroBreakEnd(taskId) {
       priority: 1
     });
   } catch (error) {
-    console.error('Ошибка при завершении перерыва:', error);
+    self.logger.error('Ошибка при завершении перерыва:', error);
   }
 }
 
@@ -261,7 +308,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     startPomodoro(request.taskId, request.durationMinutes)
       .then(() => sendResponse({ success: true }))
       .catch(error => {
-        console.error('Ошибка при запуске помодоро:', error);
+        self.logger.error('Ошибка при запуске помодоро:', error);
         sendResponse({ success: false, error: error.message });
       });
     return true; // Асинхронный ответ
@@ -269,7 +316,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     stopPomodoro(request.taskId)
       .then(() => sendResponse({ success: true }))
       .catch(error => {
-        console.error('Ошибка при остановке помодоро:', error);
+        self.logger.error('Ошибка при остановке помодоро:', error);
         sendResponse({ success: false, error: error.message });
       });
     return true;
@@ -277,7 +324,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     getPomodoroStatus(request.taskId)
       .then(status => sendResponse({ success: true, status }))
       .catch(error => {
-        console.error('Ошибка при получении статуса помодоро:', error);
+        self.logger.error('Ошибка при получении статуса помодоро:', error);
         sendResponse({ success: false, error: error.message });
       });
     return true;
@@ -289,7 +336,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="24" fill="#4f6d7b"/><path d="M64 30c-15.5 0-28 12.5-28 28v16l-6 10h68l-6-10V58c0-15.5-12.5-28-28-28zm0 74c6.6 0 12-5.4 12-12H52c0 6.6 5.4 12 12 12z" fill="#fff"/></svg>'
     )}`;
 
-    console.log('showNotification via chrome.notifications');
+    self.logger.info('showNotification via chrome.notifications');
     chrome.notifications.create({
       type: 'basic',
       iconUrl: iconUrl || fallbackIconUrl,
@@ -299,7 +346,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }, () => {
       const error = chrome.runtime.lastError;
       if (error && self?.registration?.showNotification) {
-        console.log('showNotification via service worker');
+        self.logger.info('showNotification via service worker');
         self.registration.showNotification(title, {
           body: message,
           icon: iconUrl,
@@ -313,7 +360,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
       }
       if (error) {
-        console.error('Ошибка уведомления:', error.message);
+        self.logger.error('Ошибка уведомления:', error.message);
       }
       sendResponse({ success: !error, error: error?.message });
     });
@@ -403,7 +450,7 @@ async function stopPomodoro(taskId) {
         );
         
         await chrome.storage.local.set({ tasks: updatedTasks });
-        console.log(`Сохранено время для задачи ${taskId}: ${elapsedSeconds} секунд. Общее время: ${totalTimeSeconds} секунд (было: ${currentTotalTimeSeconds})`);
+        self.logger.info('Сохранено время для задачи ' + taskId + ': ' + elapsedSeconds + ' секунд. Общее время: ' + totalTimeSeconds + ' секунд (было: ' + currentTotalTimeSeconds + ')');
       }
     }
   }
@@ -453,11 +500,16 @@ async function getPomodoroStatus(taskId) {
   return { active: false };
 }
 
-// Слушатель изменений в хранилище для обновления напоминаний
-chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === 'local' && changes.tasks) {
-    checkDeadlines();
-  }
+// Слушатель изменений в хранилище: debounce и инкрементальный sync при наличии old/new
+chrome.storage.onChanged.addListener(function (changes, areaName) {
+  if (areaName !== 'local' || !changes.tasks) return;
+  var oldVal = changes.tasks.oldValue;
+  var newVal = changes.tasks.newValue;
+  if (deadlineSyncTimer) clearTimeout(deadlineSyncTimer);
+  deadlineSyncTimer = setTimeout(function () {
+    deadlineSyncTimer = null;
+    checkDeadlines(oldVal, newVal);
+  }, DEADLINE_DEBOUNCE_MS);
 });
 
 // Периодическая проверка дедлайнов (каждый час)

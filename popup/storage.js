@@ -9,6 +9,7 @@ class StorageManager {
         defaultCategory: '',
         showCompleted: true,
         taskDisplayMode: 'all', // 'all' или 'today'
+        taskCreationMode: 'bottom', // 'bottom' или 'fab'
         logCompletedSteps: false,
         globalPomodoroSettings: {
           interval: 25, // минут
@@ -50,6 +51,9 @@ class StorageManager {
           if (!mergedData.settings.taskDisplayMode) {
             mergedData.settings.taskDisplayMode = this.defaultData.settings.taskDisplayMode;
           }
+          if (!['bottom', 'fab'].includes(mergedData.settings.taskCreationMode)) {
+            mergedData.settings.taskCreationMode = this.defaultData.settings.taskCreationMode;
+          }
           if (typeof mergedData.settings.logCompletedSteps !== 'boolean') {
             mergedData.settings.logCompletedSteps = this.defaultData.settings.logCompletedSteps;
           }
@@ -58,6 +62,7 @@ class StorageManager {
           if (mergedData.tasks && Array.isArray(mergedData.tasks)) {
             mergedData.tasks = mergedData.tasks.map(task => ({
               ...task,
+              priorityRank: Number.isFinite(task.priorityRank) ? Number(task.priorityRank) : null,
               pomodoroSessions: task.pomodoroSessions || [],
               totalTime: task.totalTime || 0,
               log: task.log || [],
@@ -119,6 +124,7 @@ class StorageManager {
       completed: false,
       category: task.category || '',
       priority: task.priority || 'medium',
+      priorityRank: Number.isFinite(task.priorityRank) ? Number(task.priorityRank) : null,
       deadline: task.deadline || null,
       createdAt: now,
       updatedAt: now,
@@ -175,6 +181,9 @@ class StorageManager {
       }
       if (!task.hasOwnProperty('pomodoroSettings')) {
         task.pomodoroSettings = null;
+      }
+      if (!task.hasOwnProperty('priorityRank')) {
+        task.priorityRank = null;
       }
       if (!task.hasOwnProperty('link')) {
         task.link = null;
@@ -249,14 +258,6 @@ class StorageManager {
       data.categories.push(categoryName);
       chrome.storage.local.set({ categories: data.categories }, () => {});
     }
-    return data.categories;
-  }
-
-  // Удалить категорию
-  async removeCategory(categoryName) {
-    const data = await this.getAll();
-    data.categories = data.categories.filter(c => c !== categoryName);
-    chrome.storage.local.set({ categories: data.categories }, () => {});
     return data.categories;
   }
 
@@ -351,17 +352,47 @@ class StorageManager {
   }
 
   // Обновить данные карточки задачи
-  async updateTaskCardData(taskId, data) {
+  async updateTaskCardData(taskId, data, options) {
+    const opts = options || {};
     const tasks = await this.getTasks();
     const index = tasks.findIndex(t => t.id === taskId);
     if (index === -1) return null;
 
+    const task = tasks[index];
     const updates = {};
     if (data.pomodoroSessions !== undefined) updates.pomodoroSessions = data.pomodoroSessions;
     if (data.totalTime !== undefined) updates.totalTime = data.totalTime;
     if (data.log !== undefined) updates.log = data.log;
     if (data.nextSteps !== undefined) updates.nextSteps = data.nextSteps;
     if (data.pomodoroSettings !== undefined) updates.pomodoroSettings = data.pomodoroSettings;
+
+    if (opts.syncDeadlineToToday && !task.completed) {
+      var todayKey =
+        typeof window !== 'undefined' &&
+        window.dateUtils &&
+        typeof window.dateUtils.todayKey === 'function'
+          ? window.dateUtils.todayKey()
+          : null;
+      if (!todayKey) {
+        var d = new Date();
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        todayKey = y + '-' + m + '-' + day;
+      }
+      var overdue =
+        typeof window !== 'undefined' &&
+        window.dateUtils &&
+        typeof window.dateUtils.isDeadlineOverdue === 'function'
+          ? window.dateUtils.isDeadlineOverdue(task.deadline)
+          : (function () {
+              var part = task.deadline ? String(task.deadline).split('T')[0] : '';
+              return /^\d{4}-\d{2}-\d{2}$/.test(part) && part < todayKey;
+            })();
+      if (overdue) {
+        updates.deadline = todayKey;
+      }
+    }
 
     return await this.updateTask(taskId, updates);
   }
@@ -382,10 +413,14 @@ class StorageManager {
     const sessionDuration = session.duration || 0; // в минутах
     const totalTime = (task.totalTime || 0) + sessionDuration;
 
-    return await this.updateTaskCardData(taskId, {
-      pomodoroSessions: sessions,
-      totalTime: totalTime
-    });
+    return await this.updateTaskCardData(
+      taskId,
+      {
+        pomodoroSessions: sessions,
+        totalTime: totalTime
+      },
+      {}
+    );
   }
 
   // Добавить запись в лог
@@ -401,12 +436,16 @@ class StorageManager {
       timestamp: Date.now()
     });
 
-    return await this.updateTaskCardData(taskId, { log });
+    return await this.updateTaskCardData(taskId, { log }, { syncDeadlineToToday: true });
   }
 
   // Обновить следующие шаги
   async updateNextSteps(taskId, steps) {
-    return await this.updateTaskCardData(taskId, { nextSteps: steps });
+    return await this.updateTaskCardData(
+      taskId,
+      { nextSteps: steps },
+      { syncDeadlineToToday: true }
+    );
   }
 
   // Получить глобальные настройки помодоро
@@ -443,7 +482,7 @@ class StorageManager {
 
   // Обновить настройки помодоро для задачи
   async updateTaskPomodoroSettings(taskId, settings) {
-    return await this.updateTaskCardData(taskId, { pomodoroSettings: settings });
+    return await this.updateTaskCardData(taskId, { pomodoroSettings: settings }, {});
   }
 }
 

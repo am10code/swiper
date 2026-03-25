@@ -23,6 +23,8 @@ let isPomodoroTransitioning = false;
 let bellAudio = null;
 let bellAudioUnlocked = false;
 let isPomodoroBgMuted = false;
+let isTaskCardPageInited = false;
+let isTaskCardClosing = false;
 
 const PomodoroState = {
   IDLE_POMODORO: 'IDLE_POMODORO',
@@ -34,6 +36,50 @@ const PomodoroState = {
 
 function normalizePriority(priority) {
   return priority === 'high' ? 'high' : 'medium';
+}
+
+function getTodayDeadlineKey() {
+  if (window.dateUtils && typeof window.dateUtils.todayKey === 'function') {
+    return window.dateUtils.todayKey();
+  }
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return getDateKey(today);
+}
+
+function isTaskDeadlineOverdueForCard(deadline) {
+  if (window.dateUtils && typeof window.dateUtils.isDeadlineOverdue === 'function') {
+    return window.dateUtils.isDeadlineOverdue(deadline);
+  }
+  const t = getTodayDeadlineKey();
+  if (!deadline || !t) return false;
+  const part = String(deadline).split('T')[0];
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(part)) return false;
+  return part < t;
+}
+
+async function applyDeadlineTodayAfterEngagement() {
+  if (!currentTaskId || !currentTask || currentTask.completed) return;
+  if (!isTaskDeadlineOverdueForCard(currentTask.deadline)) return;
+  const todayKey = getTodayDeadlineKey();
+  if (!todayKey) return;
+  const storage = getStorage();
+  const updated = await storage.updateTask(currentTaskId, { deadline: todayKey });
+  if (updated) {
+    currentTask = updated;
+  }
+  displayTaskInfo();
+  await refreshTaskLists();
+}
+
+async function applyTaskUpdateToCardUI(updatedTask) {
+  if (!updatedTask) return;
+  const prevDeadline = currentTask ? currentTask.deadline : undefined;
+  currentTask = updatedTask;
+  if (prevDeadline !== updatedTask.deadline) {
+    displayTaskInfo();
+    await refreshTaskLists();
+  }
 }
 
 const POMODORO_BG_AUDIO_URL = chrome.runtime.getURL(
@@ -182,7 +228,7 @@ window.openTaskCard = async function(taskId) {
     setupFocusTrap();
   } catch (error) {
     console.error('Ошибка при открытии карточки задачи:', error);
-    alert('Ошибка при открытии карточки задачи: ' + error.message);
+    await window.dialogService.showAlert('Ошибка при открытии карточки задачи: ' + error.message);
   }
 };
 
@@ -191,7 +237,10 @@ window.startPomodoroForTaskCard = async function() {
 };
 
 // Инициализация при загрузке страницы
-document.addEventListener('DOMContentLoaded', async () => {
+async function initTaskCardPage() {
+  if (isTaskCardPageInited) return;
+  isTaskCardPageInited = true;
+
   // Убеждаемся, что storage инициализирован
   const storage = getStorage();
   if (!window.storage) {
@@ -200,6 +249,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   setupTaskCardListeners();
   setupKeyboardListeners();
+}
+
+window.initTaskCardPage = initTaskCardPage;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  await initTaskCardPage();
 });
 
 // Настройка обработчиков событий
@@ -213,11 +268,14 @@ function setupTaskCardListeners() {
       await closeTaskCard();
     });
   }
-  document.getElementById('taskCardOverlay').addEventListener('click', async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    await closeTaskCard();
-  });
+  const overlay = document.getElementById('taskCardOverlay');
+  if (overlay) {
+    overlay.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      await closeTaskCard();
+    });
+  }
 
   // Редактирование заголовка по клику
   const titleElement = document.getElementById('taskCardTitle');
@@ -248,6 +306,7 @@ function setupTaskCardListeners() {
   const optionHideSwiper1WeekBtn = document.getElementById('taskCardOptionHideSwiper1Week');
   const optionCompleteBtn = document.getElementById('taskCardOptionCompleteBtn');
   const optionEditBtn = document.getElementById('taskCardOptionEditBtn');
+  const optionResetPriorityWeightBtn = document.getElementById('taskCardOptionResetPriorityWeightBtn');
   const optionDeleteBtn = document.getElementById('taskCardOptionDeleteBtn');
 
   if (moreOptionsBtn && optionsMenu) {
@@ -266,6 +325,12 @@ function setupTaskCardListeners() {
     optionEditBtn.addEventListener('click', () => {
       closeTaskCardOptionsMenu();
       toggleEditMode();
+    });
+  }
+  if (optionResetPriorityWeightBtn) {
+    optionResetPriorityWeightBtn.addEventListener('click', async () => {
+      closeTaskCardOptionsMenu();
+      await resetTaskPriorityWeight();
     });
   }
   if (optionDeleteBtn) {
@@ -502,10 +567,18 @@ function resetTaskCardScroll() {
 }
 
 // Закрытие карточки задачи
-async function closeTaskCard() {
+async function closeTaskCard(options = {}) {
+  if (isTaskCardClosing) return;
+  isTaskCardClosing = true;
+  const { goToTasksAfterClose = true } = options;
   if (isPomodoroActive()) {
-    const confirmed = confirm('Помодоро-таймер активен. Вы уверены, что хотите закрыть карточку? Таймер будет остановлен.');
+    const confirmed = await window.dialogService.showConfirm(
+      'Закрыть карточку?',
+      'Помодоро-таймер активен. Вы уверены, что хотите закрыть карточку? Таймер будет остановлен.',
+      { confirmLabel: 'Закрыть' }
+    );
     if (!confirmed) {
+      isTaskCardClosing = false;
       return;
     }
     await stopActivePomodoroSession();
@@ -538,12 +611,17 @@ async function closeTaskCard() {
     if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
       lastFocusedElement.focus();
     }
+    if (goToTasksAfterClose && typeof window.switchSection === 'function') {
+      window.switchSection('tasks');
+    }
+    isTaskCardClosing = false;
   }, 300);
 }
 
 // Проверка, открыта ли карточка
 function isTaskCardOpen() {
-  return document.getElementById('taskCardPanel').style.display !== 'none';
+  const panel = document.getElementById('taskCardPanel');
+  return !!panel && panel.style.display !== 'none';
 }
 
 // Загрузка данных карточки задачи
@@ -610,6 +688,7 @@ function displayTaskInfo() {
   }
   
   const meta = document.getElementById('taskCardMeta');
+  if (!meta) return;
   meta.innerHTML = '';
   
   if (currentTask.category) {
@@ -741,14 +820,21 @@ async function saveTitleEditor() {
   }
   try {
     const storage = getStorage();
-    await storage.updateTask(currentTaskId, { text: nextTitle });
-    if (currentTask) {
-      currentTask = { ...currentTask, text: nextTitle };
+    const patch = { text: nextTitle };
+    if (!currentTask.completed && isTaskDeadlineOverdueForCard(currentTask.deadline)) {
+      const todayKey = getTodayDeadlineKey();
+      if (todayKey) {
+        patch.deadline = todayKey;
+      }
     }
-    appendTaskCardTitleWithRecurringMarker(titleElement, currentTask);
-    if (typeof refreshTaskLists === 'function') {
-      await refreshTaskLists();
+    const updated = await storage.updateTask(currentTaskId, patch);
+    if (updated) {
+      currentTask = updated;
+    } else if (currentTask) {
+      currentTask = { ...currentTask, ...patch };
     }
+    displayTaskInfo();
+    await refreshTaskLists();
   } catch (error) {
     console.error('Ошибка при сохранении названия задачи:', error);
     appendTaskCardTitleWithRecurringMarker(titleElement, currentTask);
@@ -797,6 +883,17 @@ function closeTaskCardOptionsMenu() {
   if (menu) {
     menu.style.display = 'none';
   }
+}
+
+async function resetTaskPriorityWeight() {
+  if (!currentTaskId) return;
+  const storage = getStorage();
+  await storage.updateTask(currentTaskId, { priorityRank: null });
+  if (currentTask) {
+    currentTask = { ...currentTask, priorityRank: null };
+  }
+  displayTaskInfo();
+  await refreshTaskLists();
 }
 
 async function postponeTaskToNextMonday() {
@@ -975,6 +1072,7 @@ async function startPomodoro() {
   setPomodoroState(PomodoroState.RUNNING_POMODORO);
   pomodoroIntervalId = setInterval(updatePomodoroTick, 1000);
   updatePomodoroTick();
+  await applyDeadlineTodayAfterEngagement();
 }
 
 async function pausePomodoro() {
@@ -1100,10 +1198,14 @@ async function addPomodoroSessionRecord(durationSeconds, type) {
   });
   const currentTotalSeconds = Math.floor(Number(cardData?.totalTime) || 0);
   const updatedTotalSeconds = currentTotalSeconds + durationSeconds;
-  await storage.updateTaskCardData(currentTaskId, {
-    pomodoroSessions: sessions,
-    totalTime: updatedTotalSeconds
-  });
+  await storage.updateTaskCardData(
+    currentTaskId,
+    {
+      pomodoroSessions: sessions,
+      totalTime: updatedTotalSeconds
+    },
+    {}
+  );
   baseTotalSeconds = updatedTotalSeconds;
   displayTotalTime(updatedTotalSeconds);
   await displayPomodoroHistory(sessions);
@@ -1258,11 +1360,11 @@ async function addLogEntry() {
   const text = input.value.replace(/\s+$/, '');
   
   if (!text.trim()) return;
-  
-  await storage.addLogEntry(currentTaskId, text);
+
+  const updated = await storage.addLogEntry(currentTaskId, text);
   input.value = '';
-  
-  // Перезагружаем лог
+  await applyTaskUpdateToCardUI(updated);
+
   const cardData = await storage.getTaskCardData(currentTaskId);
   displayLog(cardData.log || []);
 }
@@ -1365,9 +1467,9 @@ async function addNextStep() {
     order: nextSteps.length
   });
   
-  await storage.updateNextSteps(currentTaskId, nextSteps);
+  const updated = await storage.updateNextSteps(currentTaskId, nextSteps);
   input.value = '';
-  
+  await applyTaskUpdateToCardUI(updated);
   displayNextSteps(nextSteps);
 }
 
@@ -1494,12 +1596,17 @@ async function toggleNextStep(stepId) {
   if (step) {
     const willComplete = !step.completed;
     step.completed = willComplete;
-    await storage.updateNextSteps(currentTaskId, nextSteps);
+    const updatedAfterSteps = await storage.updateNextSteps(currentTaskId, nextSteps);
+    await applyTaskUpdateToCardUI(updatedAfterSteps);
     if (willComplete) {
       const settings = await storage.getSettings();
       if (settings?.logCompletedSteps === true) {
         const stepText = String(step.text || '').trim() || 'Без названия';
-        await storage.addLogEntry(currentTaskId, `Выполнен шаг: ${stepText}`);
+        const updatedAfterLog = await storage.addLogEntry(
+          currentTaskId,
+          `Выполнен шаг: ${stepText}`
+        );
+        await applyTaskUpdateToCardUI(updatedAfterLog);
         const updatedCardData = await storage.getTaskCardData(currentTaskId);
         displayLog(updatedCardData.log || []);
       }
@@ -1515,7 +1622,8 @@ async function deleteNextStep(stepId) {
   const nextSteps = cardData.nextSteps || [];
   
   const filtered = nextSteps.filter(s => s.id !== stepId);
-  await storage.updateNextSteps(currentTaskId, filtered);
+  const updated = await storage.updateNextSteps(currentTaskId, filtered);
+  await applyTaskUpdateToCardUI(updated);
   displayNextSteps(filtered);
 }
 
@@ -1574,7 +1682,8 @@ async function handleDrop(e) {
         step.order = index;
       });
       
-      await storage.updateNextSteps(currentTaskId, nextSteps);
+      const updated = await storage.updateNextSteps(currentTaskId, nextSteps);
+      await applyTaskUpdateToCardUI(updated);
       displayNextSteps(nextSteps);
     }
   }
@@ -1633,7 +1742,7 @@ async function saveTaskEdit() {
   const linkInput = document.getElementById('taskCardEditLink');
   const linkValue = linkInput ? linkInput.value.trim() : '';
   if (linkValue && !isValidHttpUrl(linkValue)) {
-    alert('Ссылка должна быть валидным URL и начинаться с http:// или https://');
+    await window.dialogService.showAlert('Ссылка должна быть валидным URL и начинаться с http:// или https://');
     return;
   }
   updates.link = linkValue || null;
@@ -1641,19 +1750,37 @@ async function saveTaskEdit() {
   const recurrenceDaysInput = document.getElementById('taskCardEditRecurrenceDays');
   updates.isRecurringParticipation = recurringToggle ? recurringToggle.checked : false;
   updates.recurrenceDays = Math.max(1, Math.floor(Number(recurrenceDaysInput?.value) || 3));
-  
-  await storage.updateTask(currentTaskId, updates);
-  currentTask = { ...currentTask, ...updates };
-  
+
+  const prev = currentTask;
+  const priorityChanged =
+    normalizePriority(updates.priority) !== normalizePriority(prev.priority);
+  const linkChanged = (updates.link || null) !== (prev.link || null);
+  const prevRecurrence = Math.max(1, Math.floor(Number(prev.recurrenceDays) || 3));
+  const recurringChanged =
+    updates.isRecurringParticipation !== (prev.isRecurringParticipation === true) ||
+    updates.recurrenceDays !== prevRecurrence;
+  const deadlineChanged =
+    (updates.deadline || null) !== (prev.deadline || null);
+
+  if (!priorityChanged && !linkChanged && !recurringChanged && !deadlineChanged) {
+    return;
+  }
+
+  if (priorityChanged || linkChanged || recurringChanged) {
+    if (isTaskDeadlineOverdueForCard(prev.deadline)) {
+      updates.deadline = getTodayDeadlineKey();
+    }
+  }
+
+  const updated = await storage.updateTask(currentTaskId, updates);
+  if (updated) {
+    currentTask = updated;
+  } else {
+    currentTask = { ...currentTask, ...updates };
+  }
+
   displayTaskInfo();
-  
-  // Обновляем список задач в основном интерфейсе
-  if (typeof window.renderActiveTasks === 'function') {
-    window.renderActiveTasks();
-  }
-  if (typeof window.renderCompletedTasks === 'function') {
-    window.renderCompletedTasks();
-  }
+  await refreshTaskLists();
 }
 
 function updateRecurringEditControls() {
@@ -1722,11 +1849,92 @@ async function confirmDeleteTask() {
   await refreshTaskLists();
 }
 
+/**
+ * Снимок очереди ФЛОУ из popup.js или fallback из текущего порядка.
+ */
+async function ensureFlowSessionSnapshotForFlow() {
+  if (typeof window.getFlowSessionOrderedIds === 'function' && typeof window.refreshFlowSessionSnapshot === 'function') {
+    let S = window.getFlowSessionOrderedIds();
+    if (!S || S.length === 0) {
+      await window.refreshFlowSessionSnapshot();
+      S = window.getFlowSessionOrderedIds();
+    }
+    if (S && S.length > 0) {
+      return S;
+    }
+  }
+  const ordered = await getFlowOrderedTasks();
+  return ordered.map((t) => t.id);
+}
+
+/**
+ * Следующая задача в ФЛОУ: обход по снимку; с последнего id — переснимок и первая задача нового порядка.
+ * После завершения задачи вызывать уже после toggleTask (taskId не в активных).
+ */
+async function resolveNextFlowTaskId(taskId) {
+  const S = await ensureFlowSessionSnapshotForFlow();
+  if (!S || S.length === 0) {
+    return null;
+  }
+
+  const activeOrdered = await getFlowOrderedTasks();
+  const activeSet = new Set(activeOrdered.map((t) => t.id));
+  if (activeOrdered.length === 0) {
+    return null;
+  }
+
+  const lastId = S[S.length - 1];
+  let i = S.indexOf(taskId);
+  if (i === -1) {
+    i = 0;
+  }
+
+  if (taskId === lastId) {
+    if (typeof window.refreshFlowSessionSnapshot === 'function') {
+      await window.refreshFlowSessionSnapshot();
+    }
+    const after = await getFlowOrderedTasks();
+    if (after.length === 0) {
+      return null;
+    }
+    const S2 = typeof window.getFlowSessionOrderedIds === 'function' ? window.getFlowSessionOrderedIds() : null;
+    if (S2 && S2.length > 0) {
+      const first = S2[0];
+      if (after.some((t) => t.id === first)) {
+        return first;
+      }
+    }
+    return after[0].id;
+  }
+
+  const len = S.length;
+  for (let step = 1; step <= len; step++) {
+    const id = S[(i + step) % len];
+    if (activeSet.has(id)) {
+      return id;
+    }
+  }
+  return null;
+}
+
 async function handleTaskCardComplete() {
   if (!currentTaskId) return;
+  const isFlowMode = typeof window.getCurrentSectionName === 'function' && window.getCurrentSectionName() === 'flow';
+
   const storage = getStorage();
   await storage.toggleTask(currentTaskId);
   await refreshTaskLists();
+
+  if (isFlowMode) {
+    const nextFlowTaskId = await resolveNextFlowTaskId(currentTaskId);
+    if (nextFlowTaskId && typeof window.openTaskCard === 'function') {
+      await window.openTaskCard(nextFlowTaskId);
+      return;
+    }
+    await closeTaskCard();
+    return;
+  }
+
   await closeTaskCard();
   const isSwiperPage = window.location.pathname.includes('swiper.html');
   if (isSwiperPage) {
@@ -1754,11 +1962,23 @@ async function handleTaskDoneForToday() {
   displayTaskInfo();
   await refreshTaskLists();
 
-  // После "Выполнено на сегодня" открываем следующую задачу:
-  // сначала просроченные, затем задачи на сегодня.
-  const overdueAndToday = getOverdueAndTodayTasksSorted(tasks);
-  if (overdueAndToday.length > 0 && typeof window.openTaskCard === 'function') {
-    await window.openTaskCard(overdueAndToday[0].id);
+  const isFlowMode = typeof window.getCurrentSectionName === 'function' && window.getCurrentSectionName() === 'flow';
+  if (isFlowMode) {
+    const flowActive = await getFlowOrderedTasks();
+    if (flowActive.length > 0) {
+      const nextId = await resolveNextFlowTaskId(currentTaskId);
+      if (nextId && typeof window.openTaskCard === 'function') {
+        await window.openTaskCard(nextId);
+        return;
+      }
+    }
+    await closeTaskCard();
+    return;
+  }
+
+  const queue = getTasksCardOrderedTasks(tasks);
+  if (queue.length > 0 && typeof window.openTaskCard === 'function') {
+    await window.openTaskCard(queue[0].id);
     return;
   }
 
@@ -1767,22 +1987,36 @@ async function handleTaskDoneForToday() {
 
 async function handleOpenNextTodayTask() {
   await stopActivePomodoroSession();
+  const isFlowMode = typeof window.getCurrentSectionName === 'function' && window.getCurrentSectionName() === 'flow';
   const swiperSection = document.getElementById('swiperSection');
   const isSwiperSection = swiperSection && window.getComputedStyle(swiperSection).display !== 'none';
   const isSwiperPage = window.location.pathname.includes('swiper.html');
   const useSwiperFlow = isSwiperPage || isSwiperSection;
+
+  if (isFlowMode) {
+    const flowTasks = await getFlowOrderedTasks();
+    if (flowTasks.length === 0) {
+      await window.dialogService.showAlert('Нет активных задач.');
+      return;
+    }
+    const nextId = await resolveNextFlowTaskId(currentTaskId);
+    if (nextId && typeof window.openTaskCard === 'function') {
+      await window.openTaskCard(nextId);
+    }
+    return;
+  }
+
   const tasks = useSwiperFlow
     ? await getActiveTasksSorted()
-    : getOverdueAndTodayTasksSorted(await getStorage().getTasks());
+    : getTasksCardOrderedTasks(await getStorage().getTasks());
+
   if (tasks.length === 0) {
-    alert(useSwiperFlow ? 'Нет активных задач.' : 'Нет задач на сегодня или просроченных.');
+    await window.dialogService.showAlert('Нет активных задач.');
     return;
   }
 
   const currentIndex = tasks.findIndex(task => task.id === currentTaskId);
-  const nextIndex = currentIndex === -1
-    ? 0
-    : (currentIndex + 1) % tasks.length;
+  const nextIndex = currentIndex === -1 ? 0 : currentIndex + 1;
   const nextTask = tasks[nextIndex];
 
   if (nextTask && typeof window.openTaskCard === 'function') {
@@ -1824,20 +2058,6 @@ async function refreshTaskLists() {
   }
 }
 
-async function getTodayTasksSorted() {
-  const storage = getStorage();
-  const tasks = await storage.getTasks();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayKey = getDateKey(today);
-
-  const todayTasks = tasks.filter(task => (
-    !task.completed && isTaskDueToday(task, todayKey)
-  ));
-
-  return sortTasksByPriorityDeadlineCreated(todayTasks);
-}
-
 async function getActiveTasksSorted() {
   const storage = getStorage();
   const tasks = await storage.getTasks();
@@ -1846,22 +2066,63 @@ async function getActiveTasksSorted() {
 }
 
 function getOverdueAndTodayTasksSorted(tasks) {
+  const { overdue, todayTasks } = splitActiveTasksByDeadlineBuckets(tasks);
+  return [
+    ...sortByPriorityWeight(overdue),
+    ...sortByPriorityWeight(todayTasks)
+  ];
+}
+
+function getTasksCardOrderedTasks(tasks) {
+  const { overdue, todayTasks, later, noDate } = splitActiveTasksByDeadlineBuckets(tasks);
+  return [
+    ...sortByPriorityWeight(overdue),
+    ...sortByPriorityWeight(todayTasks),
+    ...sortByDeadlineThenPriority(later),
+    ...sortByPriorityWeight(noDate)
+  ];
+}
+
+function splitActiveTasksByDeadlineBuckets(tasks) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayKey = getDateKey(today);
 
-  const activeWithDeadline = (tasks || []).filter(task => !task.completed && !!task.deadline);
-  const overdue = activeWithDeadline.filter(task => {
+  const active = (tasks || []).filter(task => !task.completed);
+  const withDeadline = active.filter(task => !!task.deadline);
+  const noDate = active.filter(task => !task.deadline);
+  const todayTasks = withDeadline.filter(task => isTaskDueToday(task, todayKey));
+  const todayTaskIds = new Set(todayTasks.map(task => task.id));
+  const overdue = withDeadline.filter(task => {
+    if (todayTaskIds.has(task.id)) return false;
     const deadlineDate = parseDeadlineDate(task.deadline);
     if (!deadlineDate || Number.isNaN(deadlineDate.getTime())) return false;
     deadlineDate.setHours(0, 0, 0, 0);
     return deadlineDate < today;
   });
-  const todayTasks = activeWithDeadline.filter(task => isTaskDueToday(task, todayKey));
+  const overdueIds = new Set(overdue.map(task => task.id));
+  const later = withDeadline.filter(task => !todayTaskIds.has(task.id) && !overdueIds.has(task.id));
+
+  return {
+    overdue,
+    todayTasks,
+    later,
+    noDate
+  };
+}
+
+/**
+ * Порядок для режима ФЛОУ: просрочено → сегодня → позже → без дедлайна.
+ */
+async function getFlowOrderedTasks() {
+  const storage = getStorage();
+  const tasks = await storage.getTasks();
+  const { overdue, todayTasks, later, noDate } = splitActiveTasksByDeadlineBuckets(tasks);
 
   return [
-    ...sortTasksByPriorityDeadlineCreated(overdue),
-    ...sortTasksByPriorityDeadlineCreated(todayTasks)
+    ...sortByPriorityWeight([...overdue, ...todayTasks]),
+    ...sortByDeadlineThenPriority(later),
+    ...sortByPriorityWeight(noDate)
   ];
 }
 
@@ -1875,6 +2136,12 @@ function isTaskDueToday(task, todayKey) {
 
 function sortTasksByPriorityDeadlineCreated(tasks) {
   return [...tasks].sort((a, b) => {
+    const rankA = Number.isFinite(a.priorityRank) ? Number(a.priorityRank) : Number.POSITIVE_INFINITY;
+    const rankB = Number.isFinite(b.priorityRank) ? Number(b.priorityRank) : Number.POSITIVE_INFINITY;
+    if (rankA !== rankB) {
+      return rankA - rankB;
+    }
+
     const priorityOrder = { high: 2, medium: 1 };
     const priorityA = normalizePriority(a.priority);
     const priorityB = normalizePriority(b.priority);
@@ -1890,6 +2157,52 @@ function sortTasksByPriorityDeadlineCreated(tasks) {
   });
 }
 
+function sortByPriorityWeight(tasks) {
+  return [...tasks].sort((a, b) => {
+    const rankA = Number.isFinite(a.priorityRank) ? Number(a.priorityRank) : Number.POSITIVE_INFINITY;
+    const rankB = Number.isFinite(b.priorityRank) ? Number(b.priorityRank) : Number.POSITIVE_INFINITY;
+    if (rankA !== rankB) {
+      return rankA - rankB;
+    }
+
+    const priorityOrder = { high: 2, medium: 1 };
+    const priorityA = normalizePriority(a.priority);
+    const priorityB = normalizePriority(b.priority);
+    if (priorityOrder[priorityA] !== priorityOrder[priorityB]) {
+      return priorityOrder[priorityB] - priorityOrder[priorityA];
+    }
+
+    return b.createdAt - a.createdAt;
+  });
+}
+
+function sortByDeadlineThenPriority(tasks) {
+  return [...tasks].sort((a, b) => {
+    const deadlineA = parseDeadlineDate(a.deadline);
+    const deadlineB = parseDeadlineDate(b.deadline);
+    const timeA = deadlineA && !Number.isNaN(deadlineA.getTime()) ? deadlineA.setHours(0, 0, 0, 0) : Number.POSITIVE_INFINITY;
+    const timeB = deadlineB && !Number.isNaN(deadlineB.getTime()) ? deadlineB.setHours(0, 0, 0, 0) : Number.POSITIVE_INFINITY;
+    if (timeA !== timeB) {
+      return timeA - timeB;
+    }
+
+    const rankA = Number.isFinite(a.priorityRank) ? Number(a.priorityRank) : Number.POSITIVE_INFINITY;
+    const rankB = Number.isFinite(b.priorityRank) ? Number(b.priorityRank) : Number.POSITIVE_INFINITY;
+    if (rankA !== rankB) {
+      return rankA - rankB;
+    }
+
+    const priorityOrder = { high: 2, medium: 1 };
+    const priorityA = normalizePriority(a.priority);
+    const priorityB = normalizePriority(b.priority);
+    if (priorityOrder[priorityA] !== priorityOrder[priorityB]) {
+      return priorityOrder[priorityB] - priorityOrder[priorityA];
+    }
+
+    return b.createdAt - a.createdAt;
+  });
+}
+
 // Вспомогательные функции
 function getPriorityLabel(priority) {
   const labels = {
@@ -1900,52 +2213,63 @@ function getPriorityLabel(priority) {
 }
 
 function parseDeadlineDate(deadline) {
+  if (typeof window !== 'undefined' && window.dateUtils && window.dateUtils.parseLocalDateKey) {
+    return window.dateUtils.parseLocalDateKey(deadline);
+  }
   if (!deadline) return null;
   if (typeof deadline === 'string') {
-    const datePart = deadline.split('T')[0];
-    const parts = datePart.split('-');
+    var datePart = deadline.split('T')[0];
+    var parts = datePart.split('-');
     if (parts.length === 3) {
-      const year = Number(parts[0]);
-      const month = Number(parts[1]) - 1;
-      const day = Number(parts[2]);
-      return new Date(year, month, day);
+      return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
     }
   }
   return new Date(deadline);
 }
 
 function getDateKey(date) {
+  if (typeof window !== 'undefined' && window.dateUtils && window.dateUtils.getDateKey) {
+    return window.dateUtils.getDateKey(date);
+  }
   if (!date || Number.isNaN(date.getTime())) return '';
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  var year = date.getFullYear();
+  var month = String(date.getMonth() + 1).padStart(2, '0');
+  var day = String(date.getDate()).padStart(2, '0');
+  return year + '-' + month + '-' + day;
 }
 
 function getDateStringWithOffset(daysOffset) {
-  const date = new Date();
+  if (typeof window !== 'undefined' && window.dateUtils && window.dateUtils.getDateStringWithOffset) {
+    return window.dateUtils.getDateStringWithOffset(daysOffset);
+  }
+  var date = new Date();
   date.setHours(0, 0, 0, 0);
   date.setDate(date.getDate() + daysOffset);
   return getDateKey(date);
 }
 
 function formatDeadline(deadline) {
+  if (typeof window !== 'undefined' && window.dateUtils && window.dateUtils.formatDeadline) {
+    return window.dateUtils.formatDeadline(deadline);
+  }
   if (!deadline) return '';
-  const deadlineDate = parseDeadlineDate(deadline);
-  const today = new Date();
+  var deadlineDate = parseDeadlineDate(deadline);
+  var today = new Date();
   today.setHours(0, 0, 0, 0);
   if (!deadlineDate || Number.isNaN(deadlineDate.getTime())) return '';
   deadlineDate.setHours(0, 0, 0, 0);
-  const diffTime = deadlineDate - today;
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  if (diffDays < 0) return `Просрочено на ${Math.abs(diffDays)} дн.`;
+  var diffTime = deadlineDate - today;
+  var diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return 'Просрочено на ' + Math.abs(diffDays) + ' дн.';
   if (diffDays === 0) return 'Сегодня';
   if (diffDays === 1) return 'Завтра';
-  if (diffDays <= 7) return `Через ${diffDays} дн.`;
-  
+  if (diffDays <= 7) return 'Через ' + diffDays + ' дн.';
   return deadlineDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 }
+
+// Экспорт для popup.js (режим ФЛОУ и закрытие карточки при выходе)
+window.getFlowOrderedTasks = getFlowOrderedTasks;
+window.closeTaskCard = closeTaskCard;
 
 // Экспорт функции для использования в других модулях
 function openTaskCard(taskId) {

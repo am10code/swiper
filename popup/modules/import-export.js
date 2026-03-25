@@ -45,7 +45,7 @@
 
     const lowerName = file.name.toLowerCase();
     if (!lowerName.endsWith('.swiper') && !lowerName.endsWith('.json')) {
-      alert('Поддерживаются только файлы .swiper или .json');
+      await window.dialogService.showAlert('Поддерживаются только файлы .swiper или .json');
       return;
     }
 
@@ -53,53 +53,77 @@
       const content = await file.text();
       const parsed = JSON.parse(content);
       if (!Array.isArray(parsed)) {
-        alert('Файл должен содержать массив задач.');
+        await window.dialogService.showAlert('Файл должен содержать массив задач.');
         return;
       }
       const normalization = normalizeImportedTasks(parsed);
       if (!normalization.ok) {
-        alert(`Файл сломан: ${normalization.error}`);
+        await window.dialogService.showAlert(`Файл сломан: ${normalization.error}`);
         return;
       }
 
-      const confirmed = confirm('Импорт перезапишет все текущие задачи. Продолжить?');
+      const confirmed = await window.dialogService.showConfirm('Импорт', 'Импорт перезапишет все текущие задачи. Продолжить?', { confirmLabel: 'Продолжить' });
       if (!confirmed) return;
 
       await storage.saveTasks(normalization.tasks);
       if (typeof onAfterImport === 'function') {
         await onAfterImport();
       }
-      alert('Задачи успешно импортированы.');
+      await window.dialogService.showAlert('Задачи успешно импортированы.');
     } catch (error) {
       console.error('Ошибка при импорте задач:', error);
-      alert('Не удалось импортировать задачи. Проверьте формат файла.');
+      await window.dialogService.showAlert('Не удалось импортировать задачи. Проверьте формат файла.');
     }
   }
 
+  function normalizePriority(value) {
+    if (value === 'high') return 'high';
+    return 'medium';
+  }
+
+  function normalizePriorityRank(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const rank = Number(value);
+    if (!Number.isFinite(rank)) return null;
+    return Math.max(1, Math.floor(rank));
+  }
+
+  function normalizeDeadline(value) {
+    if (value === null || value === undefined) return null;
+    if (typeof value !== 'string') return null;
+    var s = value.trim();
+    if (s === '') return null;
+    var match = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+    if (match) return match[1] + '-' + match[2] + '-' + match[3];
+    return s;
+  }
+
   function normalizeImportedTasks(tasks) {
-    const now = Date.now();
-    const normalized = [];
+    var now = Date.now();
+    var normalized = [];
+    var usedIds = new Set();
 
-    for (let i = 0; i < tasks.length; i += 1) {
-      const task = tasks[i];
+    for (var i = 0; i < tasks.length; i += 1) {
+      var task = tasks[i];
       if (!task || typeof task !== 'object' || Array.isArray(task)) {
-        return { ok: false, error: `Задача #${i + 1} имеет неверный формат.` };
+        return { ok: false, error: 'Задача #' + (i + 1) + ' имеет неверный формат.' };
       }
 
-      const text = typeof task.text === 'string' ? task.text.trim() : '';
+      var text = typeof task.text === 'string' ? task.text.trim() : '';
       if (!text) {
-        return { ok: false, error: `Отсутствует поле "text" в задаче #${i + 1}.` };
+        return { ok: false, error: 'Отсутствует поле "text" в задаче #' + (i + 1) + '.' };
       }
 
-      const id = typeof task.id === 'string' && task.id.trim()
-        ? task.id.trim()
-        : createTaskId();
-      const completed = typeof task.completed === 'boolean' ? task.completed : false;
-      const category = typeof task.category === 'string' ? task.category : '';
-      const priority = typeof task.priority === 'string' ? task.priority : 'medium';
-      const deadline = task.deadline === null || typeof task.deadline === 'string'
-        ? task.deadline
-        : null;
+      var rawId = typeof task.id === 'string' && task.id.trim() ? task.id.trim() : '';
+      var id = rawId && !usedIds.has(rawId) ? rawId : createTaskId();
+      while (usedIds.has(id)) id = createTaskId();
+      usedIds.add(id);
+
+      var completed = typeof task.completed === 'boolean' ? task.completed : false;
+      var category = typeof task.category === 'string' ? task.category.trim() : '';
+      var priority = normalizePriority(typeof task.priority === 'string' ? task.priority.trim().toLowerCase() : '');
+      var priorityRank = normalizePriorityRank(task.priorityRank);
+      var deadline = normalizeDeadline(task.deadline === null || typeof task.deadline === 'string' ? task.deadline : null);
       const createdAt = typeof task.createdAt === 'number' && !Number.isNaN(task.createdAt)
         ? task.createdAt
         : now;
@@ -146,6 +170,7 @@
         completed,
         category,
         priority,
+        priorityRank,
         deadline,
         createdAt,
         updatedAt,

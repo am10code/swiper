@@ -39,6 +39,9 @@
     <header class="header">
       <button id="burgerMenuBtn" class="burger-menu-btn" title="Меню">☰</button>
       <h1>Свайпер</h1>
+      <button id="priorityPromptBtn" class="priority-prompt-btn" title="Приоритизация задач" aria-label="Приоритизация задач" style="display: none;">
+        <span class="priority-prompt-dots" aria-hidden="true">🪄</span>
+      </button>
     </header>
 
     <!-- Бургер-меню -->
@@ -141,7 +144,11 @@
     </div>
   </div>
 
+  <script src="shared/logger.js"></script>
+  <script src="shared/date-utils.js"></script>
+  <script src="popup/modules/dialog-service.js"></script>
   <script src="popup/storage.js"></script>
+  <script src="popup/modules/prioritization.js"></script>
   <script src="popup/modules/swiper/swiper.js"></script>
   <script src="popup/modules/swiper/swiper-nav.js"></script>
   <script src="popup/modules/swiper/swiper-init.js"></script>

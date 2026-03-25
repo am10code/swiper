@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Todo Расширение",
-  "version": "1.0.3.1",
+  "version": "2.1.1.5",
   "description": "Простое и удобное todo приложение для браузера",
   "permissions": [
     "storage",
@@ -23,16 +23,6 @@
     "16": "assets/icons/icon16.png",
     "48": "assets/icons/icon48.png",
     "128": "assets/icons/icon128.png"
-  },
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "assets/icons/icon16.png",
-        "assets/icons/icon48.png",
-        "assets/icons/icon128.png"
-      ],
-      "matches": ["<all_urls>"]
-    }
-  ]
+  }
 }
 
