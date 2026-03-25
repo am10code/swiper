@@ -1841,11 +1841,29 @@ function closeDeleteModal() {
 
 async function confirmDeleteTask() {
   const storage = getStorage();
-  await storage.deleteTask(currentTaskId);
+  const deletedTaskId = currentTaskId;
+  const isFlowMode = typeof window.getCurrentSectionName === 'function' && window.getCurrentSectionName() === 'flow';
+
+  await storage.deleteTask(deletedTaskId);
   closeDeleteModal();
+
+  // В ФЛОУ не закрываем карточку сразу: нужно перелистнуть на следующую задачу по снимку.
+  if (isFlowMode) {
+    await refreshTaskLists();
+
+    const nextFlowTaskId = await resolveNextFlowTaskId(deletedTaskId);
+    if (nextFlowTaskId && typeof window.openTaskCard === 'function') {
+      await window.openTaskCard(nextFlowTaskId);
+      return;
+    }
+
+    // Если очередь по снимку исчерпана — выходим из ФЛОУ (закроется карточка и переключится в `tasks`).
+    closeTaskCard();
+    return;
+  }
+
+  // Обычное поведение (без ФЛОУ): закрываем карточку и потом обновляем список задач.
   closeTaskCard();
-  
-  // Обновляем список задач
   await refreshTaskLists();
 }
 

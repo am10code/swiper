@@ -2332,6 +2332,12 @@ body.flow-mode .task-card-panel.closing {
   animation: slideOutCenter var(--transition-slow) ease-out forwards;
 }
 
+/* Гарантируем, что подтверждение удаления всегда поверх карточки задачи.
+   Иначе общий `.modal { z-index: 1000 }` может оказываться ниже `#taskCardPanel` (z-index: 3001). */
+#taskDeleteModal {
+  z-index: 100000 !important;
+}
+
 .flow-section {
   flex: 1;
   min-height: 0;
