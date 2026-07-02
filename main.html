@@ -39,9 +39,6 @@
         <button id="flowBtn" class="flow-btn" type="button" title="Режим ФЛОУ" aria-label="Режим ФЛОУ">✨ ФЛОУ</button>
       </div>
       <span id="headerTitle" class="header-title" aria-live="polite"></span>
-      <button id="priorityPromptBtn" class="priority-prompt-btn" title="Приоритизация задач" aria-label="Приоритизация задач" style="display: none;">
-        <span class="priority-prompt-dots" aria-hidden="true">🪄</span>
-      </button>
       <button id="settingsBtn" class="settings-btn" title="Настройки">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" width="20" height="20">
           <path style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;" d="M46.999,27.708v-5.5l-6.546-1.07c-0.388-1.55-0.996-3.007-1.798-4.342l3.815-5.437L38.58,7.472l-5.368,3.859c-1.338-0.81-2.805-1.428-4.366-1.817L27.706,3h-5.5l-1.06,6.492c-1.562,0.383-3.037,0.993-4.379,1.799l-5.352-3.824l-3.889,3.887l3.765,5.384c-0.814,1.347-1.433,2.82-1.826,4.392l-6.464,1.076v5.5l6.457,1.145c0.39,1.568,1.009,3.041,1.826,4.391l-3.816,5.337l3.887,3.891l5.391-3.776c1.346,0.808,2.817,1.423,4.379,1.808L22.206,47h5.5l1.156-6.513c1.554-0.394,3.022-1.013,4.355-1.824l5.428,3.809l3.888-3.891l-3.875-5.38c0.802-1.335,1.411-2.794,1.795-4.344L46.999,27.708z"/>
@@ -58,25 +55,45 @@
           <span>📋</span>
           <span>Задачи</span>
         </button>
-        <button class="burger-menu-item" data-section="search">
-          <span>🔍</span>
-          <span>Поиск</span>
-        </button>
         <button class="burger-menu-item" data-section="completed">
           <span>✅</span>
           <span>Выполненные задачи</span>
         </button>
-        <button class="burger-menu-item" data-section="swiper">
-          <span>💫</span>
-          <span>Свайпер</span>
-        </button>
-        <button class="burger-menu-item" data-section="frequently-postponed">
-          <span>⏰</span>
-          <span>Часто откладываемые</span>
-        </button>
         <button class="burger-menu-item" data-section="flow">
           <span>✨</span>
           <span>ФЛОУ</span>
+        </button>
+        <button class="burger-menu-item" data-section="movement">
+          <span>🚦</span>
+          <span>Движение</span>
+        </button>
+        <button class="burger-menu-item" data-section="triage">
+          <span>🧭</span>
+          <span>Триаж</span>
+        </button>
+        <button class="burger-menu-item" data-section="micro-slots">
+          <span>⚡</span>
+          <span>Малые слоты</span>
+        </button>
+        <button class="burger-menu-item" data-section="waiting">
+          <span>⏳</span>
+          <span>Жду</span>
+        </button>
+        <button class="burger-menu-item" data-section="backlog">
+          <span>📦</span>
+          <span>Бэклог</span>
+        </button>
+        <button class="burger-menu-item" data-section="ideas">
+          <span>💡</span>
+          <span>Идеи</span>
+        </button>
+        <button class="burger-menu-item" data-section="stale">
+          <span>🧊</span>
+          <span>Залежалось</span>
+        </button>
+        <button class="burger-menu-item" data-section="cookbooks">
+          <span>📖</span>
+          <span>Cookbooks</span>
         </button>
         <button class="burger-menu-item" data-section="settings">
           <span>⚙️</span>
@@ -87,12 +104,35 @@
 
     <!-- Режим ФЛОУ: полноэкранная одна задача -->
     <div class="flow-section" id="flowSection" style="display: none;">
-      <div id="flowEmptyState" class="empty-state" style="display: none;">
-        <p>Нет активных задач</p>
+      <div class="flow-time-window-panel" id="flowTimeWindowPanel">
+        <span class="flow-time-window-label">Есть времени:</span>
+        <div class="flow-time-window-buttons" id="flowTimeWindowButtons" role="group" aria-label="Окно времени ФЛОУ">
+          <button type="button" class="flow-time-window-btn" data-minutes="5">5м</button>
+          <button type="button" class="flow-time-window-btn" data-minutes="15">15м</button>
+          <button type="button" class="flow-time-window-btn" data-minutes="30">30м</button>
+          <button type="button" class="flow-time-window-btn" data-minutes="60">60м</button>
+          <button type="button" class="flow-time-window-btn" data-minutes="120">120м</button>
+        </div>
+      </div>
+      <div id="flowEmptyState" class="flow-empty-state" style="display: none;">
+        <div class="flow-empty-card">
+          <div class="flow-empty-kicker">ФЛОУ пуст</div>
+          <p id="flowEmptyStateMessage">Нет активных задач</p>
+          <div class="flow-empty-actions">
+            <button type="button" class="workflow-action-btn primary" id="flowEmptyIncreaseTimeBtn">
+              Увеличить время
+            </button>
+            <button type="button" class="workflow-action-btn secondary" id="flowEmptyMovementBtn">
+              В Движение
+            </button>
+            <button type="button" class="workflow-action-btn secondary" id="flowEmptyTriageBtn">
+              В Триаж
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Поиск и фильтры -->
     <div class="prioritization-section" id="prioritizationSection" style="display: none;">
       <h2 class="section-title">Что важнее</h2>
       <p class="prioritization-subtitle">Выберите более важную задачу</p>
@@ -103,21 +143,209 @@
       </div>
     </div>
 
-    <!-- Поиск и фильтры -->
-    <div class="search-section" id="searchSection" style="display: none;">
-      <h2 class="section-title">Поиск задач</h2>
-      <input type="text" id="searchInput" class="search-input" placeholder="Поиск задач...">
-      <div class="filters">
-        <select id="categoryFilter" class="filter-select">
-          <option value="">Все категории</option>
-        </select>
-        <select id="priorityFilter" class="filter-select">
-          <option value="">Все приоритеты</option>
-          <option value="high">Высокий</option>
-          <option value="medium">Обычный</option>
-        </select>
+    <div class="workflow-section movement-section" id="movementSection" style="display: none;">
+      <div class="workflow-section-header">
+        <h2 class="section-title">Движение</h2>
+        <div id="movementStats" class="workflow-stats"></div>
       </div>
-      <!-- Результаты поиска будут добавлены динамически -->
+      <div id="movementList" class="workflow-card-list"></div>
+      <div id="movementEmptyState" class="empty-state" style="display: none;">
+        <p>Нет задач, которым нужно помочь сдвинуться</p>
+      </div>
+    </div>
+
+    <div class="workflow-section" id="triageSection" style="display: none;">
+      <div class="workflow-section-header">
+        <h2 class="section-title">Триаж</h2>
+        <div id="triageStats" class="workflow-stats"></div>
+      </div>
+      <div id="triageList" class="workflow-card-list"></div>
+      <div id="triageEmptyState" class="empty-state" style="display: none;">
+        <p>Нет карточек, которым нужна подготовка</p>
+      </div>
+    </div>
+
+    <div class="workflow-section" id="microSlotsSection" style="display: none;">
+      <div class="workflow-section-header">
+        <h2 class="section-title">Малые слоты</h2>
+        <div id="microSlotsStats" class="workflow-stats"></div>
+      </div>
+      <div id="microSlotsList" class="workflow-card-list compact"></div>
+      <div id="microSlotsEmptyState" class="empty-state" style="display: none;">
+        <p>Нет коротких следующих действий</p>
+      </div>
+    </div>
+
+    <div class="workflow-section" id="waitingSection" style="display: none;">
+      <div class="workflow-section-header">
+        <h2 class="section-title">Жду</h2>
+        <div id="waitingStats" class="workflow-stats"></div>
+      </div>
+      <div id="waitingList" class="workflow-card-list compact"></div>
+      <div id="waitingEmptyState" class="empty-state" style="display: none;">
+        <p>Нет задач в ожидании</p>
+      </div>
+    </div>
+
+    <div class="workflow-section" id="backlogSection" style="display: none;">
+      <div class="workflow-section-header">
+        <h2 class="section-title">Бэклог</h2>
+        <div id="backlogStats" class="workflow-stats"></div>
+      </div>
+      <div id="backlogList" class="workflow-card-list compact"></div>
+      <div id="backlogEmptyState" class="empty-state" style="display: none;">
+        <p>Бэклог пуст</p>
+      </div>
+    </div>
+
+    <div class="workflow-section" id="ideasSection" style="display: none;">
+      <div class="workflow-section-header">
+        <h2 class="section-title">Идеи</h2>
+        <div id="ideasStats" class="workflow-stats"></div>
+      </div>
+      <div id="ideasList" class="workflow-card-list compact"></div>
+      <div id="ideasEmptyState" class="empty-state" style="display: none;">
+        <p>Идей пока нет</p>
+      </div>
+    </div>
+
+    <div class="workflow-section" id="staleSection" style="display: none;">
+      <div class="workflow-section-header">
+        <h2 class="section-title">Залежалось</h2>
+        <div id="staleStats" class="workflow-stats"></div>
+      </div>
+      <div id="staleList" class="workflow-card-list compact"></div>
+      <div id="staleEmptyState" class="empty-state" style="display: none;">
+        <p>Нет залежавшихся задач</p>
+      </div>
+    </div>
+
+    <div class="cookbooks-section" id="cookbooksSection" style="display: none;">
+      <div class="cookbooks-header">
+        <h2 class="section-title">Cookbooks</h2>
+        <p class="cookbooks-subtitle">Рабочие рецепты для типовых ситуаций: что открыть, как оформить задачу и когда считать её готовой к работе.</p>
+      </div>
+
+      <div class="cookbooks-map" aria-label="Карта сценариев">
+        <span class="cookbook-map-item">Входящее → Движение</span>
+        <span class="cookbook-map-item">5–15 минут → Малые слоты</span>
+        <span class="cookbook-map-item">1–4 часа → ФЛОУ</span>
+        <span class="cookbook-map-item">Жду ответа → Жду</span>
+        <span class="cookbook-map-item">Не сейчас → Бэклог / Идеи</span>
+      </div>
+
+      <div class="cookbook-grid">
+        <article class="cookbook-card">
+          <h3 class="cookbook-title">Утренний запуск дня</h3>
+          <p class="cookbook-trigger">Когда: начало рабочего дня или первый нормальный слот после встреч.</p>
+          <ol class="cookbook-steps">
+            <li>Открой «Движение» и сначала обработай ожидания, дедлайны и карточки без следующего шага.</li>
+            <li>Перенеси на сегодня только то, что реально помещается в дневной capacity.</li>
+            <li>Доведи черновики до понятного следующего шага или отправь их в бэклог/идеи.</li>
+            <li>Если видна кнопка «Что важнее», сравни только готовые активные задачи на сегодня.</li>
+            <li>Открой «ФЛОУ» и работай по первой карточке, не выбирая заново каждые 10 минут.</li>
+          </ol>
+          <p class="cookbook-result">Итог: на сегодня остаётся короткий, честный список, а не экран всех возможностей сразу.</p>
+        </article>
+
+        <article class="cookbook-card">
+          <h3 class="cookbook-title">Маленький слот 5–15 минут</h3>
+          <p class="cookbook-trigger">Когда: между встречами, перед обедом, в конце дня, пока нет глубокого фокуса.</p>
+          <ol class="cookbook-steps">
+            <li>Открой «Малые слоты».</li>
+            <li>Бери шаги размера 5м или 15м: пинг, проверка, короткая запись, маленькое действие.</li>
+            <li>После выполнения закрой шаг или добавь факт в лог.</li>
+            <li>Если действие упёрлось в другого человека, переведи задачу в «Жду».</li>
+          </ol>
+          <p class="cookbook-result">Итог: маленькие окна перестают утекать, а большие задачи не ломают быстрый слот.</p>
+        </article>
+
+        <article class="cookbook-card">
+          <h3 class="cookbook-title">Deep work 1–4 часа</h3>
+          <p class="cookbook-trigger">Когда: есть длинное окно и можно реально углубиться.</p>
+          <ol class="cookbook-steps">
+            <li>Открой «ФЛОУ» и выбери окно 60м или 120м.</li>
+            <li>Если первая карточка слишком мутная, не пролистывай молча: открой редактирование и выпиши ближайший шаг.</li>
+            <li>Для эпика поставь оценку `epic` или диапазон, затем выдели первый шаг на 30–60 минут.</li>
+            <li>После прогресса добавь короткую запись в лог, чтобы следующий заход начинался с контекста.</li>
+          </ol>
+          <p class="cookbook-result">Итог: ФЛОУ становится режимом исполнения, а не ещё одним местом выбора.</p>
+        </article>
+
+        <article class="cookbook-card">
+          <h3 class="cookbook-title">Мутная или большая задача</h3>
+          <p class="cookbook-trigger">Когда: задача важная, но непонятно, что именно делать первым.</p>
+          <ol class="cookbook-steps">
+            <li>Оставь задачу черновиком, пока у неё нет конкретного следующего действия.</li>
+            <li>В карточке сформулируй результат: что будет считаться готовым.</li>
+            <li>Добавь 1–3 ближайших шага, первый шаг должен быть физически выполнимым.</li>
+            <li>Поставь оценку времени: фиксированную, диапазон или `epic`.</li>
+            <li>Переводи в «Готово к работе» только после прохождения проверки готовности.</li>
+          </ol>
+          <p class="cookbook-result">Итог: большая задача перестаёт занимать экран как туманное обязательство.</p>
+        </article>
+
+        <article class="cookbook-card">
+          <h3 class="cookbook-title">Задача застряла</h3>
+          <p class="cookbook-trigger">Когда: ты несколько раз пролистываешь карточку, задача старая или неприятная.</p>
+          <ol class="cookbook-steps">
+            <li>Открой «Движение» или «Залежалось».</li>
+            <li>Для каждой задачи выбери один честный исход: следующий шаг, «Жду», «Бэклог», «Идея» или удалить.</li>
+            <li>Если причина в размере, режь до шага 15–30 минут.</li>
+            <li>Если причина в непонятности, верни задачу в черновик через проработку карточки.</li>
+          </ol>
+          <p class="cookbook-result">Итог: повторное откладывание превращается в решение, а не в ритуал.</p>
+        </article>
+
+        <article class="cookbook-card">
+          <h3 class="cookbook-title">Жду человека, ответа или события</h3>
+          <p class="cookbook-trigger">Когда: следующий ход не у тебя.</p>
+          <ol class="cookbook-steps">
+            <li>Переведи задачу в «Жду».</li>
+            <li>Заполни, кого или чего ждёшь, дату проверки и короткую заметку.</li>
+            <li>Не держи такую задачу в активном списке и во ФЛОУ.</li>
+            <li>В день проверки задача появится в «Движении»: верни её в активные или продли ожидание с новой заметкой.</li>
+          </ol>
+          <p class="cookbook-result">Итог: ожидание не маскируется под работу и не забивает список дел.</p>
+        </article>
+
+        <article class="cookbook-card">
+          <h3 class="cookbook-title">Идея или «может быть потом»</h3>
+          <p class="cookbook-trigger">Когда: мысль полезная, но сейчас это не обязательство.</p>
+          <ol class="cookbook-steps">
+            <li>Отправь сырую мысль в «Идеи».</li>
+            <li>Если это уже обязательство, но не на эту неделю, отправь в «Бэклог».</li>
+            <li>Не ставь дедлайн «сегодня» только ради сохранения идеи.</li>
+            <li>На недельном обзоре подними из бэклога только то, что получило конкретный следующий шаг.</li>
+          </ol>
+          <p class="cookbook-result">Итог: список задач перестаёт быть складом идей.</p>
+        </article>
+
+        <article class="cookbook-card">
+          <h3 class="cookbook-title">Конец дня</h3>
+          <p class="cookbook-trigger">Когда: осталось 10–15 минут до выключения рабочего режима.</p>
+          <ol class="cookbook-steps">
+            <li>Открой «Выполненные задачи» и проверь, что важные завершения закрыты.</li>
+            <li>В активных задачах оставь заметку, где остановился, если продолжишь завтра.</li>
+            <li>Не переноси всё просроченное на завтра пачкой: сначала выбери, что реально важно.</li>
+            <li>Для незакрытых коммуникаций поставь «Жду» или короткий следующий пинг.</li>
+          </ol>
+          <p class="cookbook-result">Итог: завтрашний старт начинается с контекста, а не с археологии.</p>
+        </article>
+
+        <article class="cookbook-card">
+          <h3 class="cookbook-title">Регулярное участие</h3>
+          <p class="cookbook-trigger">Когда: задача повторяется, но не должна превращаться в вечный незакрытый хвост.</p>
+          <ol class="cookbook-steps">
+            <li>В карточке включи «Регулярное участие», задай период и выбери тип.</li>
+            <li>Для повторяемого действия вроде разбора почты выбери «Рутинное действие»: следующий шаг не нужен.</li>
+            <li>Для регулярной работы над темой выбери «Работа со следующим шагом»: без шага она попадёт в «Движение».</li>
+            <li>В день работы используй «Выполнено на сегодня», а не обычное завершение.</li>
+            <li>Если участие больше не актуально, выключи регулярность и закрой задачу обычным способом.</li>
+          </ol>
+          <p class="cookbook-result">Итог: повторяющиеся активности двигаются по календарю, но не размножаются вручную.</p>
+        </article>
+      </div>
     </div>
 
     <!-- Настройки -->
@@ -125,7 +353,7 @@
       <h2 class="section-title">Настройки</h2>
       <div class="settings-section">
         <h3 class="settings-section-title">Настройки помодоро</h3>
-        <div class="pomodoro-settings pomodoro-settings-form">
+        <div class="pomodoro-settings pomodoro-settings-form daily-capacity-settings">
           <p class="pomodoro-settings-hint">Подберите ритм работы и перерывов под свой темп. Все значения задаются в минутах, кроме частоты длинного перерыва.</p>
           <div class="pomodoro-settings-grid">
             <label class="pomodoro-setting-row" for="pomodoroInterval">
@@ -176,6 +404,28 @@
         </div>
       </div>
       <div class="settings-section">
+        <h3 class="settings-section-title">Планирование дня</h3>
+        <div class="pomodoro-settings pomodoro-settings-form">
+          <p class="pomodoro-settings-hint">Лимит планового времени на задачи с дедлайном «Сегодня». Используется для проверки перегруза дня.</p>
+          <div class="pomodoro-settings-grid">
+            <label class="pomodoro-setting-row" for="dailyCapacityMinInput">
+              <span class="pomodoro-setting-meta">
+                <span class="pomodoro-setting-title">Дневной capacity</span>
+                <span class="pomodoro-setting-caption">Диапазон: 60-960 минут. Рекомендуем 180-360 минут.</span>
+              </span>
+              <span class="pomodoro-input-wrap">
+                <input type="number" id="dailyCapacityMinInput" min="60" max="960" step="15" value="240" class="pomodoro-setting-input">
+                <span class="pomodoro-input-unit">мин</span>
+              </span>
+            </label>
+          </div>
+          <div class="pomodoro-setting-actions">
+            <button id="dailyCapacitySaveBtn" class="btn-secondary pomodoro-save-btn">Сохранить capacity</button>
+            <span id="dailyCapacitySaveStatus" class="pomodoro-save-status" aria-live="polite"></span>
+          </div>
+        </div>
+      </div>
+      <div class="settings-section">
         <h3 class="settings-section-title">Логи</h3>
         <div class="pomodoro-settings log-settings-controls">
           <label class="log-settings-option">
@@ -217,9 +467,19 @@
     <!-- Список активных задач -->
     <div class="tasks-section" id="tasksSection">
       <div class="tasks-section-content">
+        <div class="tasks-toolbar">
+          <button id="priorityPromptBtn" class="priority-prompt-inline-btn" title="Сравнить активные задачи" aria-label="Сравнить активные задачи" style="display: none;">
+            <span>Что важнее</span>
+            <span id="priorityPromptCount" class="priority-prompt-count" aria-hidden="true" style="display: none;"></span>
+          </button>
+        </div>
+        <div id="tasksCommandCenter" class="tasks-command-center" aria-label="Что делать сейчас"></div>
         <!-- Просрочено -->
         <div id="overdueTasksSection" class="tasks-subsection" style="display: none;">
-          <h3 class="subsection-title overdue-title">Просрочено</h3>
+          <div class="subsection-header">
+            <h3 class="subsection-title overdue-title">Просрочено<span id="overdueCountBadge" class="subsection-count" style="display: none;"></span></h3>
+            <button type="button" id="overdueMoveAllBtn" class="subsection-action-btn" style="display: none;">Перенести всё на сегодня</button>
+          </div>
           <div id="overdueTasksList" class="tasks-list">
             <!-- Просроченные задачи будут добавлены динамически -->
           </div>
@@ -232,8 +492,8 @@
           </div>
         </div>
         <!-- Позже -->
-        <div id="otherTasksSection" class="tasks-subsection" style="display: none;">
-          <h3 class="subsection-title">Позже</h3>
+        <div id="otherTasksSection" class="tasks-subsection collapsible" style="display: none;">
+          <h3 id="laterTasksToggle" class="subsection-title collapsible-title">Позже</h3>
           <div id="otherTasksList" class="tasks-list">
             <!-- Остальные задачи будут добавлены динамически -->
           </div>
@@ -307,77 +567,6 @@
       </div>
       <div id="completedEmptyState" class="empty-state" style="display: none;">
         <p>Нет выполненных задач</p>
-      </div>
-    </div>
-
-    <!-- Раздел часто откладываемых задач -->
-    <div class="frequently-postponed-section" id="frequentlyPostponedSection" style="display: none;">
-      <h2 class="section-title">Часто откладываемые задачи</h2>
-      <div id="frequentlyPostponedList" class="tasks-list">
-        <!-- Задачи будут добавлены динамически -->
-      </div>
-      <div id="frequentlyPostponedEmptyState" class="empty-state" style="display: none;">
-        <p>Нет часто откладываемых задач</p>
-      </div>
-    </div>
-
-    <!-- Раздел Свайпер -->
-    <div class="swiper-section" id="swiperSection" style="display: none;">
-      <div class="swiper-header">
-        <div class="swiper-progress">
-          <div id="swiperCounter" class="progress-counter">0 / 0</div>
-        </div>
-      </div>
-      <div class="swiper-container">
-        <div id="swiperCardContainer" class="swiper-card-container">
-          <div class="swiper-side-action left">
-            <button id="postponeBtn" class="swiper-action-btn swiper-side-btn postpone-btn" title="Отложить">
-              <span>←</span>
-            </button>
-            <div class="swiper-side-label">Позже</div>
-          </div>
-          <!-- Карточки будут добавлены динамически -->
-          <div class="swiper-side-action right">
-            <button id="scheduleBtn" class="swiper-action-btn swiper-side-btn schedule-btn" title="Запланировать на сегодня">
-              <span>→</span>
-            </button>
-            <div class="swiper-side-label">На сегодня</div>
-          </div>
-        </div>
-        <div class="swiper-controls">
-          <div class="swiper-hint" id="swiperHint" style="display: none;">
-            ← Позже, → На сегодня
-          </div>
-          <div id="swiperEmptyState" class="empty-state" style="display: none;">
-            <h3>Все задачи обработаны</h3>
-            <p>Вы разобрали очередь задач. Можно вернуться к списку.</p>
-            <button type="button" id="swiperBackToTasksBtn" class="btn-primary">Вернуться к списку задач</button>
-          </div>
-        </div>
-      </div>
-      <div class="swiper-footer">
-        <div class="swiper-actions secondary-actions">
-          <button id="undoBtn" class="swiper-action-btn undo-btn" title="Отменить">
-            <span>↶</span>
-          </button>
-          <button id="editSwiperBtn" class="swiper-action-btn edit-btn" title="Редактировать">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 297.068 297.068" width="20" height="20">
-              <path style="fill:currentColor;" d="M288.758,46.999l-38.69-38.69c-5.347-5.354-12.455-8.303-20.02-8.303s-14.672,2.943-20.02,8.297L28.632,190.266L0,297.061l107.547-28.805L288.745,87.045c5.36-5.354,8.323-12.462,8.323-20.026S294.105,52.347,288.758,46.999z M43.478,193.583L180.71,55.823l60.554,60.541L103.761,253.866L43.478,193.583z M37.719,206.006l53.368,53.362l-42.404,11.35L26.35,248.384L37.719,206.006z M279.657,77.951l-19.493,19.505l-60.579-60.541l19.544-19.525c5.823-5.848,16.016-5.842,21.851,0l38.69,38.696c2.924,2.918,4.544,6.8,4.544,10.926C284.214,71.139,282.594,75.027,279.657,77.951z"/>
-            </svg>
-          </button>
-          <button id="deleteSwiperBtn" class="swiper-action-btn delete-btn" title="Удалить">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="20" height="20">
-              <g transform="translate(232, 228)">
-                <polygon style="fill:currentColor;" points="-207.5,-205.1 -204.5,-205.1 -204.5,-181.1 -207.5,-181.1"/>
-                <polygon style="fill:currentColor;" points="-201.5,-205.1 -198.5,-205.1 -198.5,-181.1 -201.5,-181.1"/>
-                <polygon style="fill:currentColor;" points="-195.5,-205.1 -192.5,-205.1 -192.5,-181.1 -195.5,-181.1"/>
-                <polygon style="fill:currentColor;" points="-219.5,-214.1 -180.5,-214.1 -180.5,-211.1 -219.5,-211.1"/>
-                <path style="fill:currentColor;" d="M-192.6-212.6h-2.8v-3c0-0.9-0.7-1.6-1.6-1.6h-6c-0.9,0-1.6,0.7-1.6,1.6v3h-2.8v-3c0-2.4,2-4.4,4.4-4.4h6c2.4,0,4.4,2,4.4,4.4V-212.6"/>
-                <path style="fill:currentColor;" d="M-191-172.1h-18c-2.4,0-4.5-2-4.7-4.4l-2.8-36l3-0.2l2.8,36c0.1,0.9,0.9,1.6,1.7,1.6h18c0.9,0,1.7-0.8,1.7-1.6l2.8-36l3,0.2l-2.8,36C-186.5-174-188.6-172.1-191-172.1"/>
-              </g>
-            </svg>
-          </button>
-        </div>
       </div>
     </div>
 
@@ -483,7 +672,67 @@
                 Период (дней):
                 <input type="number" id="taskCardEditRecurrenceDays" min="1" step="1" value="3" class="task-card-edit-date">
               </label>
+              <label class="task-card-recurring-mode" id="taskCardEditRecurrenceModeWrap">
+                Тип:
+                <select id="taskCardEditRecurrenceMode" class="task-card-edit-select">
+                  <option value="routine">Рутинное действие</option>
+                  <option value="needs_next_action">Работа со следующим шагом</option>
+                </select>
+              </label>
+              <div class="task-card-time-estimate" id="taskCardTimeEstimateBlock">
+                <label class="task-card-time-control">
+                  Оценка времени
+                  <select id="taskCardEditEstimateMode" class="task-card-edit-select">
+                    <option value="none">Без оценки</option>
+                    <option value="fixed">Фиксированная</option>
+                    <option value="range">Диапазон</option>
+                    <option value="epic">Эпик</option>
+                  </select>
+                </label>
+                <div class="task-card-estimate-presets" id="taskCardEstimatePresets">
+                  <button type="button" class="btn-secondary task-card-estimate-preset" data-minutes="5">5м</button>
+                  <button type="button" class="btn-secondary task-card-estimate-preset" data-minutes="15">15м</button>
+                  <button type="button" class="btn-secondary task-card-estimate-preset" data-minutes="30">30м</button>
+                  <button type="button" class="btn-secondary task-card-estimate-preset" data-minutes="45">45м</button>
+                  <button type="button" class="btn-secondary task-card-estimate-preset" data-minutes="60">60м</button>
+                  <button type="button" class="btn-secondary task-card-estimate-preset" data-minutes="90">90м</button>
+                  <button type="button" class="btn-secondary task-card-estimate-preset" data-minutes="120">120м</button>
+                  <button type="button" class="btn-secondary task-card-estimate-preset" data-minutes="180">180м</button>
+                  <button type="button" class="btn-secondary task-card-estimate-preset" data-minutes="240">240м</button>
+                  <button type="button" class="btn-secondary task-card-estimate-preset" data-minutes="360">360м</button>
+                </div>
+                <label class="task-card-time-control" id="taskCardEditTimeEstimateMinWrap">
+                  Оценка (мин)
+                  <input type="number" id="taskCardEditTimeEstimateMin" min="1" step="1" class="task-card-edit-date" placeholder="Например, 45">
+                </label>
+                <div class="task-card-range-inputs" id="taskCardEditEstimateRangeWrap">
+                  <label class="task-card-time-control">
+                    Диапазон от (мин)
+                    <input type="number" id="taskCardEditTimeEstimateRangeMin" min="1" step="1" class="task-card-edit-date" placeholder="15">
+                  </label>
+                  <label class="task-card-time-control">
+                    до (мин)
+                    <input type="number" id="taskCardEditTimeEstimateRangeMax" min="1" step="1" class="task-card-edit-date" placeholder="45">
+                  </label>
+                </div>
+              </div>
             </div>
+          </div>
+
+          <div class="task-card-plan-fact" id="taskCardPlanFact" style="display: none;">
+            <div class="task-card-plan-fact-row">
+              <span class="task-card-plan-fact-label">План</span>
+              <span class="task-card-plan-fact-value" id="taskCardPlanValue">-</span>
+            </div>
+            <div class="task-card-plan-fact-row">
+              <span class="task-card-plan-fact-label">Факт</span>
+              <span class="task-card-plan-fact-value" id="taskCardFactValue">-</span>
+            </div>
+            <div class="task-card-plan-fact-row" id="taskCardDeviationRow" style="display: none;">
+              <span class="task-card-plan-fact-label">Отклонение</span>
+              <span class="task-card-plan-fact-value" id="taskCardDeviationValue">-</span>
+            </div>
+            <div class="task-card-plan-fact-hint" id="taskCardPlanFactHint" style="display: none;"></div>
           </div>
 
           <div class="task-card-columns">
@@ -493,6 +742,21 @@
             <div class="next-steps-container">
               <div class="next-steps-form">
                 <input type="text" id="nextStepInput" class="next-step-input" placeholder="Добавить следующий шаг...">
+                <select id="nextStepSizeSelect" class="next-step-select" title="Размер шага">
+                  <option value="5">5м</option>
+                  <option value="15">15м</option>
+                  <option value="30" selected>30м</option>
+                  <option value="60">60м</option>
+                  <option value="deep">Deep</option>
+                </select>
+                <select id="nextStepKindSelect" class="next-step-select" title="Тип шага">
+                  <option value="do" selected>Сделать</option>
+                  <option value="ping">Пинг</option>
+                  <option value="check">Проверить</option>
+                  <option value="write">Написать</option>
+                  <option value="think">Подумать</option>
+                  <option value="delegate">Делегировать</option>
+                </select>
                 <button id="nextStepAddBtn" class="btn-secondary next-step-btn">Добавить шаг</button>
               </div>
               <div class="next-steps-empty-state" id="nextStepsEmptyState">
@@ -585,8 +849,6 @@
         </div>
         <div id="taskCardOptionsMenu" class="task-context-menu" style="display: none;">
           <button id="taskCardOptionNextWeekBtn">Перенести на следующую неделю</button>
-          <button id="taskCardOptionHideSwiper3Days">Не показывать в свайпере 3 дня</button>
-          <button id="taskCardOptionHideSwiper1Week">Не показывать в свайпере 1 неделю</button>
           <button id="taskCardOptionCompleteBtn">Отметить задачу выполненной</button>
           <button id="taskCardOptionEditBtn">Редактировать</button>
           <button id="taskCardOptionResetPriorityWeightBtn" type="button">Сбросить вес задачи</button>
@@ -607,18 +869,6 @@
       </div>
     </div>
 
-    <!-- Подтверждение удаления задачи (Свайпер) -->
-    <div id="swiperDeleteModal" class="modal" style="display: none;">
-      <div class="modal-content">
-        <h2>Удаление задачи</h2>
-        <p id="swiperDeleteMessage"></p>
-        <div class="modal-actions">
-          <button type="button" id="swiperDeleteCancelBtn" class="btn-secondary">Отмена</button>
-          <button type="button" id="swiperDeleteConfirmBtn" class="btn-danger">Удалить</button>
-        </div>
-      </div>
-    </div>
-
     <!-- Контекстное меню задачи -->
     <div id="taskContextMenu" class="task-context-menu" style="display: none;">
       <button type="button" id="taskContextTodayBtn">Перенести на сегодня</button>
@@ -635,8 +885,5 @@
   <script src="popup/modules/prioritization.js"></script>
   <script src="popup/popup.js"></script>
   <script src="popup/task-card.js"></script>
-  <script src="popup/modules/swiper/swiper.js"></script>
-  <script src="popup/modules/swiper/swiper-init.js"></script>
 </body>
 </html>
-

@@ -21,36 +21,11 @@
           <span>📋</span>
           <span>Задачи</span>
         </button>
-        <button class="burger-menu-item" data-section="search">
-          <span>🔍</span>
-          <span>Поиск</span>
-        </button>
         <button class="burger-menu-item" data-section="completed">
           <span>✅</span>
           <span>Выполненные задачи</span>
         </button>
-        <button class="burger-menu-item" data-section="frequently-postponed">
-          <span>⏰</span>
-          <span>Часто откладываемые</span>
-        </button>
       </div>
-    </div>
-
-    <!-- Поиск и фильтры -->
-    <div class="search-section" id="searchSection" style="display: none;">
-      <h2 class="section-title">Поиск задач</h2>
-      <input type="text" id="searchInput" class="search-input" placeholder="Поиск задач...">
-      <div class="filters">
-        <select id="categoryFilter" class="filter-select">
-          <option value="">Все категории</option>
-        </select>
-        <select id="priorityFilter" class="filter-select">
-          <option value="">Все приоритеты</option>
-          <option value="high">Высокий</option>
-          <option value="medium">Обычный</option>
-        </select>
-      </div>
-      <!-- Результаты поиска будут добавлены динамически -->
     </div>
 
     <!-- Форма добавления задачи -->
@@ -137,17 +112,6 @@
       </div>
     </div>
 
-    <!-- Раздел часто откладываемых задач -->
-    <div class="frequently-postponed-section" id="frequentlyPostponedSection" style="display: none;">
-      <h2 class="section-title">Часто откладываемые задачи</h2>
-      <div id="frequentlyPostponedList" class="tasks-list">
-        <!-- Задачи будут добавлены динамически -->
-      </div>
-      <div id="frequentlyPostponedEmptyState" class="empty-state" style="display: none;">
-        <p>Нет часто откладываемых задач</p>
-      </div>
-    </div>
-
     <!-- Модальное окно для редактирования -->
     <div id="editModal" class="modal" style="display: none;">
       <div class="modal-content">
@@ -227,7 +191,60 @@
                 Период (дней):
                 <input type="number" id="taskCardEditRecurrenceDays" min="1" step="1" value="3" class="task-card-edit-date">
               </label>
+              <div class="task-card-time-estimate" id="taskCardTimeEstimateBlock">
+                <label class="task-card-time-control">
+                  Оценка времени
+                  <select id="taskCardEditEstimateMode" class="task-card-edit-select">
+                    <option value="none">Без оценки</option>
+                    <option value="fixed">Фиксированная</option>
+                    <option value="range">Диапазон</option>
+                    <option value="epic">Эпик</option>
+                  </select>
+                </label>
+                <div class="task-card-estimate-presets" id="taskCardEstimatePresets">
+                  <button type="button" class="btn-secondary task-card-estimate-preset" data-minutes="5">5м</button>
+                  <button type="button" class="btn-secondary task-card-estimate-preset" data-minutes="15">15м</button>
+                  <button type="button" class="btn-secondary task-card-estimate-preset" data-minutes="30">30м</button>
+                  <button type="button" class="btn-secondary task-card-estimate-preset" data-minutes="45">45м</button>
+                  <button type="button" class="btn-secondary task-card-estimate-preset" data-minutes="60">60м</button>
+                  <button type="button" class="btn-secondary task-card-estimate-preset" data-minutes="90">90м</button>
+                  <button type="button" class="btn-secondary task-card-estimate-preset" data-minutes="120">120м</button>
+                  <button type="button" class="btn-secondary task-card-estimate-preset" data-minutes="180">180м</button>
+                  <button type="button" class="btn-secondary task-card-estimate-preset" data-minutes="240">240м</button>
+                  <button type="button" class="btn-secondary task-card-estimate-preset" data-minutes="360">360м</button>
+                </div>
+                <label class="task-card-time-control" id="taskCardEditTimeEstimateMinWrap">
+                  Оценка (мин)
+                  <input type="number" id="taskCardEditTimeEstimateMin" min="1" step="1" class="task-card-edit-date" placeholder="Например, 45">
+                </label>
+                <div class="task-card-range-inputs" id="taskCardEditEstimateRangeWrap">
+                  <label class="task-card-time-control">
+                    Диапазон от (мин)
+                    <input type="number" id="taskCardEditTimeEstimateRangeMin" min="1" step="1" class="task-card-edit-date" placeholder="15">
+                  </label>
+                  <label class="task-card-time-control">
+                    до (мин)
+                    <input type="number" id="taskCardEditTimeEstimateRangeMax" min="1" step="1" class="task-card-edit-date" placeholder="45">
+                  </label>
+                </div>
+              </div>
             </div>
+          </div>
+
+          <div class="task-card-plan-fact" id="taskCardPlanFact" style="display: none;">
+            <div class="task-card-plan-fact-row">
+              <span class="task-card-plan-fact-label">План</span>
+              <span class="task-card-plan-fact-value" id="taskCardPlanValue">-</span>
+            </div>
+            <div class="task-card-plan-fact-row">
+              <span class="task-card-plan-fact-label">Факт</span>
+              <span class="task-card-plan-fact-value" id="taskCardFactValue">-</span>
+            </div>
+            <div class="task-card-plan-fact-row" id="taskCardDeviationRow" style="display: none;">
+              <span class="task-card-plan-fact-label">Отклонение</span>
+              <span class="task-card-plan-fact-value" id="taskCardDeviationValue">-</span>
+            </div>
+            <div class="task-card-plan-fact-hint" id="taskCardPlanFactHint" style="display: none;"></div>
           </div>
 
           <div class="task-card-columns">
@@ -329,8 +346,6 @@
         </div>
         <div id="taskCardOptionsMenu" class="task-context-menu" style="display: none;">
           <button id="taskCardOptionNextWeekBtn">Перенести на следующую неделю</button>
-          <button id="taskCardOptionHideSwiper3Days">Не показывать в свайпере 3 дня</button>
-          <button id="taskCardOptionHideSwiper1Week">Не показывать в свайпере 1 неделю</button>
           <button id="taskCardOptionCompleteBtn">Отметить задачу выполненной</button>
           <button id="taskCardOptionEditBtn">Редактировать</button>
           <button id="taskCardOptionResetPriorityWeightBtn" type="button">Сбросить вес задачи</button>
@@ -369,4 +384,3 @@
   <script src="task-card.js"></script>
 </body>
 </html>
-

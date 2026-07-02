@@ -25,6 +25,9 @@ let bellAudioUnlocked = false;
 let isPomodoroBgMuted = false;
 let isTaskCardPageInited = false;
 let isTaskCardClosing = false;
+let hasMeaningfulProgressInCurrentCard = false;
+let forceTodayCapacityCheckOnNextSave = false;
+let saveTaskEditChain = Promise.resolve(true);
 
 const PomodoroState = {
   IDLE_POMODORO: 'IDLE_POMODORO',
@@ -34,8 +37,296 @@ const PomodoroState = {
   RUNNING_BREAK: 'RUNNING_BREAK'
 };
 
+function resetCardProgressTracking() {
+  hasMeaningfulProgressInCurrentCard = false;
+}
+
+function markMeaningfulProgress() {
+  hasMeaningfulProgressInCurrentCard = true;
+}
+
+function isCurrentTaskReadyForCombatFlow() {
+  return currentTask?.status !== 'draft' && normalizeWorkflowStatusForCard(currentTask?.workflowStatus) === 'active';
+}
+
+async function registerFlowSkipIfNeeded() {
+  if (!currentTaskId || !isCurrentTaskReadyForCombatFlow()) return;
+  if (hasMeaningfulProgressInCurrentCard) return;
+  const storage = getStorage();
+  const nextSkipCount = Math.max(0, Math.floor(Number(currentTask?.flowSkipCount) || 0)) + 1;
+  const updated = await storage.updateTask(currentTaskId, {
+    flowSkipCount: nextSkipCount,
+    events: [
+      ...(Array.isArray(currentTask?.events) ? currentTask.events : []),
+      createTaskCardEvent('flow_skipped', { count: nextSkipCount })
+    ]
+  });
+  if (updated) {
+    currentTask = updated;
+  } else if (currentTask) {
+    currentTask = { ...currentTask, flowSkipCount: nextSkipCount };
+  }
+}
+
 function normalizePriority(priority) {
   return priority === 'high' ? 'high' : 'medium';
+}
+
+function normalizeEstimateMode(mode) {
+  return ['fixed', 'range', 'epic', 'none'].includes(mode) ? mode : 'none';
+}
+
+function normalizeWorkflowStatusForCard(value) {
+  return ['active', 'waiting', 'backlog', 'idea', 'killed'].includes(value) ? value : 'active';
+}
+
+function normalizeRecurrenceExecutionModeForCard(value) {
+  return value === 'routine' ? 'routine' : 'needs_next_action';
+}
+
+function isRecurringRoutineTaskForCard(task) {
+  return task?.isRecurringParticipation === true
+    && normalizeRecurrenceExecutionModeForCard(task?.recurrenceExecutionMode) === 'routine';
+}
+
+function normalizeNextStepSizeForCard(value) {
+  if (value === 'deep') return 'deep';
+  const parsed = Number(value);
+  return [5, 15, 30, 60].includes(parsed) ? parsed : 30;
+}
+
+function normalizeNextStepKindForCard(value) {
+  return ['do', 'ping', 'check', 'write', 'think', 'delegate'].includes(value) ? value : 'do';
+}
+
+function formatNextStepSizeForCard(size) {
+  const normalized = normalizeNextStepSizeForCard(size);
+  return normalized === 'deep' ? 'Deep' : `${normalized}м`;
+}
+
+function getOpenNextStepsForCard(task) {
+  const steps = Array.isArray(task?.nextSteps) ? task.nextSteps : [];
+  return steps
+    .filter(step => step && !step.completed && typeof step.text === 'string' && step.text.trim())
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+}
+
+function getPrimaryNextActionForCard(task) {
+  return getOpenNextStepsForCard(task)[0] || null;
+}
+
+function getNextActionMinutesForCard(action) {
+  if (!action) return null;
+  const size = normalizeNextStepSizeForCard(action.size);
+  return size === 'deep' ? 120 : size;
+}
+
+function isNextActionFitForWindow(action, windowMin) {
+  if (!action) return false;
+  const size = normalizeNextStepSizeForCard(action.size);
+  const safeWindow = Math.max(5, Number(windowMin) || 30);
+  if (size === 'deep') return safeWindow >= 60;
+  return size <= safeWindow;
+}
+
+function createTaskCardEvent(type, payload) {
+  return {
+    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+    type,
+    timestamp: Date.now(),
+    payload: payload && typeof payload === 'object' && !Array.isArray(payload) ? payload : {}
+  };
+}
+
+function normalizePositiveIntegerOrNull(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return Math.floor(parsed);
+}
+
+function normalizeTimeEstimateRange(minValue, maxValue) {
+  const min = normalizePositiveIntegerOrNull(minValue);
+  const max = normalizePositiveIntegerOrNull(maxValue);
+  if (min === null || max === null || max < min) return null;
+  return { min, max };
+}
+
+function isRangeEqual(a, b) {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  return Number(a.min) === Number(b.min) && Number(a.max) === Number(b.max);
+}
+
+async function waitForSaveTaskEditQueue() {
+  try {
+    await saveTaskEditChain;
+  } catch (error) {
+    // Ошибка в одном сохранении не должна блокировать последующие.
+  }
+}
+
+function formatMinutesShort(minutes) {
+  const safe = Math.max(0, Math.floor(Number(minutes) || 0));
+  if (safe < 60) return `${safe}м`;
+  const hours = Math.floor(safe / 60);
+  const mins = safe % 60;
+  if (mins === 0) return `${hours}ч`;
+  return `${hours}ч ${mins}м`;
+}
+
+function formatSecondsShort(seconds) {
+  const safe = Math.max(0, Math.floor(Number(seconds) || 0));
+  const minutes = Math.floor(safe / 60);
+  return formatMinutesShort(minutes);
+}
+
+function formatCompactEstimateForBadge(minutes) {
+  const safe = Math.max(1, Math.floor(Number(minutes) || 0));
+  if (safe < 60) return `~${safe}м`;
+  const roundedHours = Math.max(1, Math.round(safe / 60));
+  return `~${roundedHours}ч`;
+}
+
+function resolveTaskEstimateMinutesForBadge(task) {
+  const mode = normalizeEstimateMode(task?.estimateMode);
+  if (mode === 'none' && isRecurringRoutineTaskForCard(task)) {
+    return 30;
+  }
+  if (mode === 'none') return null;
+  if (mode === 'fixed' || mode === 'epic') {
+    return normalizePositiveIntegerOrNull(task?.timeEstimateMin);
+  }
+  if (mode === 'range') {
+    const range = task?.timeEstimateMinRange && typeof task.timeEstimateMinRange === 'object'
+      ? normalizeTimeEstimateRange(task.timeEstimateMinRange.min, task.timeEstimateMinRange.max)
+      : null;
+    return range ? Math.round((range.min + range.max) / 2) : null;
+  }
+  return null;
+}
+
+function appendFlowTimeBadges(meta, task) {
+  if (!meta) return;
+  const nextAction = getPrimaryNextActionForCard(task);
+  if (nextAction) {
+    const sizeBadge = document.createElement('span');
+    sizeBadge.className = 'task-time-badge task-next-size-badge';
+    sizeBadge.textContent = formatNextStepSizeForCard(nextAction.size);
+    meta.appendChild(sizeBadge);
+
+    const kindBadge = document.createElement('span');
+    kindBadge.className = 'task-time-badge task-next-kind-badge';
+    const kindLabels = {
+      do: 'Сделать',
+      ping: 'Пинг',
+      check: 'Проверить',
+      write: 'Написать',
+      think: 'Подумать',
+      delegate: 'Делегировать'
+    };
+    kindBadge.textContent = kindLabels[normalizeNextStepKindForCard(nextAction.kind)] || 'Сделать';
+    meta.appendChild(kindBadge);
+    return;
+  }
+
+  if (isRecurringRoutineTaskForCard(task)) {
+    const routineBadge = document.createElement('span');
+    routineBadge.className = 'task-time-badge task-next-kind-badge';
+    routineBadge.textContent = 'Рутина';
+    meta.appendChild(routineBadge);
+  }
+
+  const estimateBadge = document.createElement('span');
+  estimateBadge.className = 'task-time-badge task-time-estimate-badge';
+  const estimateMin = resolveTaskEstimateMinutesForBadge(task);
+  if (estimateMin === null) {
+    estimateBadge.textContent = 'без оценки';
+    estimateBadge.classList.add('neutral');
+    meta.appendChild(estimateBadge);
+    return;
+  }
+  estimateBadge.textContent = formatCompactEstimateForBadge(estimateMin);
+  meta.appendChild(estimateBadge);
+}
+
+function resolveTaskPlanModel(task) {
+  const mode = normalizeEstimateMode(task?.estimateMode);
+  const fixedMinutes = normalizePositiveIntegerOrNull(task?.timeEstimateMin);
+  const range = task?.timeEstimateMinRange && typeof task.timeEstimateMinRange === 'object'
+    ? normalizeTimeEstimateRange(task.timeEstimateMinRange.min, task.timeEstimateMinRange.max)
+    : null;
+
+  if (mode === 'range' && range) {
+    return {
+      label: `${formatMinutesShort(range.min)} - ${formatMinutesShort(range.max)}`,
+      baselineSeconds: Math.floor(((range.min + range.max) / 2) * 60)
+    };
+  }
+
+  if ((mode === 'fixed' || mode === 'epic') && fixedMinutes !== null) {
+    return {
+      label: formatMinutesShort(fixedMinutes),
+      baselineSeconds: fixedMinutes * 60
+    };
+  }
+
+  return null;
+}
+
+function resolveTaskFactSeconds(task) {
+  const actualFocus = Number(task?.actualFocusSeconds);
+  const totalTime = Number(task?.totalTime);
+  if (Number.isFinite(actualFocus) && actualFocus > 0) return Math.floor(actualFocus);
+  if (Number.isFinite(totalTime) && totalTime > 0) return Math.floor(totalTime);
+  if (Number.isFinite(actualFocus) && actualFocus >= 0) return Math.floor(actualFocus);
+  return 0;
+}
+
+function renderPlanFactSummary(task) {
+  const container = document.getElementById('taskCardPlanFact');
+  const planValue = document.getElementById('taskCardPlanValue');
+  const factValue = document.getElementById('taskCardFactValue');
+  const deviationRow = document.getElementById('taskCardDeviationRow');
+  const deviationValue = document.getElementById('taskCardDeviationValue');
+  const hint = document.getElementById('taskCardPlanFactHint');
+  if (!container || !planValue || !factValue || !deviationRow || !deviationValue || !hint) return;
+
+  const planModel = resolveTaskPlanModel(task);
+  if (!planModel) {
+    container.style.display = 'none';
+    return;
+  }
+
+  container.style.display = 'flex';
+  planValue.textContent = planModel.label;
+
+  const factSeconds = resolveTaskFactSeconds(task);
+  factValue.textContent = formatSecondsShort(factSeconds);
+
+  deviationValue.classList.remove('over-budget', 'under-budget');
+  hint.style.display = 'none';
+  hint.textContent = '';
+
+  if (planModel.baselineSeconds > 0) {
+    const deviationRatio = (factSeconds - planModel.baselineSeconds) / planModel.baselineSeconds;
+    const deviationPercent = Math.round(deviationRatio * 100);
+    const sign = deviationPercent > 0 ? '+' : '';
+    deviationValue.textContent = `${sign}${deviationPercent}%`;
+    deviationRow.style.display = 'flex';
+
+    if (deviationPercent >= 50) {
+      deviationValue.classList.add('over-budget');
+      hint.textContent = 'Сильный перерасход: попробуйте декомпозировать задачу на меньшие шаги.';
+      hint.style.display = 'block';
+    } else if (deviationPercent <= -50 && factSeconds > 0) {
+      deviationValue.classList.add('under-budget');
+      hint.textContent = 'Сильный недорасход: возможно, оценка завышена и ее стоит скорректировать.';
+      hint.style.display = 'block';
+    }
+  } else {
+    deviationRow.style.display = 'none';
+  }
 }
 
 function getTodayDeadlineKey() {
@@ -45,6 +336,105 @@ function getTodayDeadlineKey() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return getDateKey(today);
+}
+
+function formatDeadlineKeyForCardWarning(deadlineKey) {
+  if (!deadlineKey) return '';
+  if (window.dateUtils && typeof window.dateUtils.formatDeadline === 'function') {
+    return window.dateUtils.formatDeadline(deadlineKey);
+  }
+  const date = parseDeadlineDate(deadlineKey);
+  if (!date || Number.isNaN(date.getTime())) return String(deadlineKey);
+  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+}
+
+function resolveEstimateMinutesForCapacity(task) {
+  const mode = normalizeEstimateMode(task?.estimateMode);
+  if (mode === 'none') return 0;
+  if (mode === 'fixed' || mode === 'epic') {
+    return normalizePositiveIntegerOrNull(task?.timeEstimateMin) || 0;
+  }
+  if (mode === 'range') {
+    const range = task?.timeEstimateMinRange && typeof task.timeEstimateMinRange === 'object'
+      ? normalizeTimeEstimateRange(task.timeEstimateMinRange.min, task.timeEstimateMinRange.max)
+      : null;
+    return range ? Math.round((range.min + range.max) / 2) : 0;
+  }
+  return 0;
+}
+
+function fallbackValidateDeadlineCapacity(candidateTask, allTasks, settings) {
+  const deadline = candidateTask?.deadline || null;
+  const capacityMin = Math.max(60, Math.min(960, Math.floor(Number(settings?.dailyCapacityMin) || 240)));
+  const todayKey = getTodayDeadlineKey();
+  if (!deadline || String(deadline).split('T')[0] !== todayKey) {
+    return { isOverCapacity: false, capacityMin, plannedMinutes: 0, projectedMinutes: 0 };
+  }
+  const plannedMinutes = (allTasks || [])
+    .filter((task) => !task.completed && String(task.deadline || '').split('T')[0] === todayKey)
+    .reduce((sum, task) => sum + resolveEstimateMinutesForCapacity(task), 0);
+  const projectedMinutes = plannedMinutes + resolveEstimateMinutesForCapacity(candidateTask);
+  return {
+    isOverCapacity: projectedMinutes > capacityMin,
+    capacityMin,
+    plannedMinutes,
+    projectedMinutes
+  };
+}
+
+function findNearestDeadlineWithinCapacity(candidateTask, allTasks, settings) {
+  for (let offset = 1; offset <= 30; offset++) {
+    const deadline = getDateStringWithOffset(offset);
+    const validator = typeof window.validateDeadlineCapacity === 'function'
+      ? window.validateDeadlineCapacity
+      : fallbackValidateDeadlineCapacity;
+    const check = validator({ ...candidateTask, deadline }, allTasks, settings);
+    if (!check.isOverCapacity) {
+      return deadline;
+    }
+  }
+  return null;
+}
+
+async function resolveTodayDeadlineWithCapacityInCard(candidateTask, allTasks, settings) {
+  const todayKey = getTodayDeadlineKey();
+  const normalizedDeadline = candidateTask?.deadline ? String(candidateTask.deadline).split('T')[0] : null;
+  if (normalizedDeadline !== todayKey) return candidateTask?.deadline || null;
+
+  const validator = typeof window.validateDeadlineCapacity === 'function'
+    ? window.validateDeadlineCapacity
+    : fallbackValidateDeadlineCapacity;
+  const capacityCheck = validator(candidateTask, allTasks, settings);
+  if (!capacityCheck.isOverCapacity) {
+    return candidateTask.deadline;
+  }
+
+  const suggested = findNearestDeadlineWithinCapacity(candidateTask, allTasks, settings);
+  const suggestedLabel = suggested ? formatDeadlineKeyForCardWarning(suggested) : null;
+  const lines = [
+    `План на сегодня: ${capacityCheck.projectedMinutes} мин при лимите ${capacityCheck.capacityMin} мин.`,
+    'Сегодняшний день выглядит перегруженным.'
+  ];
+  if (suggestedLabel) {
+    lines.push(`Предлагаю перенести на: ${suggestedLabel}.`);
+  }
+  const keepToday = await window.dialogService.showConfirm(
+    'Риск перегруза дня',
+    lines.join('\n'),
+    {
+      confirmLabel: 'Оставить Сегодня',
+      cancelLabel: suggestedLabel ? `Перенести на ${suggestedLabel}` : 'Перенести на завтра'
+    }
+  );
+  if (keepToday) return candidateTask.deadline;
+  return suggested || getDateStringWithOffset(1);
+}
+
+function isFlowSectionActive() {
+  const section = typeof window.getCurrentSectionName === 'function'
+    ? window.getCurrentSectionName()
+    : '';
+  return section === 'flow';
 }
 
 function isTaskDeadlineOverdueForCard(deadline) {
@@ -186,6 +576,7 @@ window.openTaskCard = async function(taskId) {
   isCompletedExpanded = false;
   isTitleEditing = false;
   isEditing = false;
+  resetCardProgressTracking();
   
   if (!currentTask) {
     console.error('Задача не найдена:', taskId);
@@ -302,8 +693,6 @@ function setupTaskCardListeners() {
   const moreOptionsBtn = document.getElementById('taskCardMoreOptionsBtn');
   const optionsMenu = document.getElementById('taskCardOptionsMenu');
   const optionNextWeekBtn = document.getElementById('taskCardOptionNextWeekBtn');
-  const optionHideSwiper3DaysBtn = document.getElementById('taskCardOptionHideSwiper3Days');
-  const optionHideSwiper1WeekBtn = document.getElementById('taskCardOptionHideSwiper1Week');
   const optionCompleteBtn = document.getElementById('taskCardOptionCompleteBtn');
   const optionEditBtn = document.getElementById('taskCardOptionEditBtn');
   const optionResetPriorityWeightBtn = document.getElementById('taskCardOptionResetPriorityWeightBtn');
@@ -351,20 +740,8 @@ function setupTaskCardListeners() {
       await postponeTaskToNextMonday();
     });
   }
-  if (optionHideSwiper3DaysBtn) {
-    optionHideSwiper3DaysBtn.addEventListener('click', async () => {
-      closeTaskCardOptionsMenu();
-      await hideTaskFromSwiper(3);
-    });
-  }
-  if (optionHideSwiper1WeekBtn) {
-    optionHideSwiper1WeekBtn.addEventListener('click', async () => {
-      closeTaskCardOptionsMenu();
-      await hideTaskFromSwiper(7);
-    });
-  }
 
-  document.addEventListener('click', (e) => {
+  document.addEventListener('click', async (e) => {
     if (optionsMenu && optionsMenu.style.display !== 'none') {
       if (moreOptionsBtn && (e.target === moreOptionsBtn || moreOptionsBtn.contains(e.target))) {
         return;
@@ -377,7 +754,7 @@ function setupTaskCardListeners() {
       const clickedInsideEdit = editSection && editSection.contains(e.target);
       const clickedEditButton = optionEditBtn && (e.target === optionEditBtn || optionEditBtn.contains(e.target));
       if (!clickedInsideEdit && !clickedEditButton) {
-        toggleEditMode();
+        await toggleEditMode();
       }
     }
   });
@@ -453,16 +830,57 @@ function setupTaskCardListeners() {
   const editLink = document.getElementById('taskCardEditLink');
   const editRecurring = document.getElementById('taskCardEditRecurringParticipation');
   const editRecurrenceDays = document.getElementById('taskCardEditRecurrenceDays');
-  if (editPriority) editPriority.addEventListener('change', saveTaskEdit);
-  if (editDeadline) editDeadline.addEventListener('change', saveTaskEdit);
-  if (editLink) editLink.addEventListener('change', saveTaskEdit);
+  const editRecurrenceMode = document.getElementById('taskCardEditRecurrenceMode');
+  const editEstimateMode = document.getElementById('taskCardEditEstimateMode');
+  const editEstimateMin = document.getElementById('taskCardEditTimeEstimateMin');
+  const editEstimateRangeMin = document.getElementById('taskCardEditTimeEstimateRangeMin');
+  const editEstimateRangeMax = document.getElementById('taskCardEditTimeEstimateRangeMax');
+  if (editPriority) editPriority.addEventListener('change', () => { saveTaskEdit({ trigger: 'change' }); });
+  if (editDeadline) editDeadline.addEventListener('change', () => { saveTaskEdit({ trigger: 'change' }); });
+  if (editLink) editLink.addEventListener('change', () => { saveTaskEdit({ trigger: 'change' }); });
   if (editRecurring) {
     editRecurring.addEventListener('change', () => {
       updateRecurringEditControls();
-      saveTaskEdit();
+      saveTaskEdit({ trigger: 'change' });
     });
   }
-  if (editRecurrenceDays) editRecurrenceDays.addEventListener('change', saveTaskEdit);
+  if (editRecurrenceDays) editRecurrenceDays.addEventListener('change', () => { saveTaskEdit({ trigger: 'change' }); });
+  if (editRecurrenceMode) editRecurrenceMode.addEventListener('change', () => { saveTaskEdit({ trigger: 'change' }); });
+  if (editEstimateMode) {
+    editEstimateMode.addEventListener('change', () => {
+      updateEstimateEditControls();
+      saveTaskEdit({ trigger: 'change' });
+    });
+  }
+  if (editEstimateMin) {
+    editEstimateMin.addEventListener('change', () => {
+      updateEstimatePresetSelection();
+      saveTaskEdit({ trigger: 'change' });
+    });
+    editEstimateMin.addEventListener('input', () => {
+      updateEstimatePresetSelection();
+      saveTaskEdit({ trigger: 'input' });
+    });
+  }
+  if (editEstimateRangeMin) editEstimateRangeMin.addEventListener('change', () => { saveTaskEdit({ trigger: 'change' }); });
+  if (editEstimateRangeMax) editEstimateRangeMax.addEventListener('change', () => { saveTaskEdit({ trigger: 'change' }); });
+  if (editEstimateRangeMin) editEstimateRangeMin.addEventListener('input', () => { saveTaskEdit({ trigger: 'input' }); });
+  if (editEstimateRangeMax) editEstimateRangeMax.addEventListener('input', () => { saveTaskEdit({ trigger: 'input' }); });
+
+  document.querySelectorAll('.task-card-estimate-preset').forEach((button) => {
+    button.addEventListener('click', () => {
+      const presetMinutes = normalizePositiveIntegerOrNull(button.getAttribute('data-minutes'));
+      if (presetMinutes === null) return;
+      const estimateMode = document.getElementById('taskCardEditEstimateMode');
+      const estimateMinInput = document.getElementById('taskCardEditTimeEstimateMin');
+      if (!estimateMode || !estimateMinInput) return;
+      estimateMode.value = 'fixed';
+      estimateMinInput.value = String(presetMinutes);
+      updateEstimateEditControls();
+      updateEstimatePresetSelection();
+      saveTaskEdit({ trigger: 'change' });
+    });
+  });
 
   document.querySelectorAll('.deadline-quick-btn[data-target="taskCardEditDeadline"]').forEach(button => {
     button.addEventListener('click', () => {
@@ -474,6 +892,9 @@ function setupTaskCardListeners() {
       } else {
         const offset = Number(button.getAttribute('data-offset') || 0);
         input.value = getDateStringWithOffset(offset);
+        if (offset === 0) {
+          forceTodayCapacityCheckOnNextSave = true;
+        }
       }
       input.dispatchEvent(new Event('change'));
     });
@@ -571,6 +992,13 @@ async function closeTaskCard(options = {}) {
   if (isTaskCardClosing) return;
   isTaskCardClosing = true;
   const { goToTasksAfterClose = true } = options;
+  if (isEditing) {
+    const canCloseEdit = await saveTaskEdit({ trigger: 'close-card', forceCommit: true });
+    if (canCloseEdit === false) {
+      isTaskCardClosing = false;
+      return;
+    }
+  }
   if (isPomodoroActive()) {
     const confirmed = await window.dialogService.showConfirm(
       'Закрыть карточку?',
@@ -605,6 +1033,7 @@ async function closeTaskCard(options = {}) {
     document.body.style.overflow = '';
     currentTaskId = null;
     currentTask = null;
+    resetCardProgressTracking();
     isEditing = false;
     isPomodoroBgMuted = false;
     updatePomodoroSoundToggle();
@@ -735,37 +1164,35 @@ function displayTaskInfo() {
     linkAnchor.textContent = link;
     meta.appendChild(linkAnchor);
   }
-  updateSwiperOptionsVisibility();
+  const isFlowMode = isFlowSectionActive();
+  if (isFlowMode) {
+    appendFlowTimeBadges(meta, currentTask);
+  }
   updatePrimaryCompleteButton();
-}
-
-function updateSwiperOptionsVisibility() {
-  const optionHideSwiper3DaysBtn = document.getElementById('taskCardOptionHideSwiper3Days');
-  const optionHideSwiper1WeekBtn = document.getElementById('taskCardOptionHideSwiper1Week');
-  const shouldShow = isSwiperContext();
-  if (optionHideSwiper3DaysBtn) {
-    optionHideSwiper3DaysBtn.style.display = shouldShow ? '' : 'none';
-  }
-  if (optionHideSwiper1WeekBtn) {
-    optionHideSwiper1WeekBtn.style.display = shouldShow ? '' : 'none';
-  }
+  renderPlanFactSummary(currentTask);
 }
 
 function updatePrimaryCompleteButton() {
   const completeBtn = document.getElementById('taskCardCompleteBtn');
   const optionCompleteBtn = document.getElementById('taskCardOptionCompleteBtn');
+  const status = currentTask?.status === 'draft' ? 'draft' : 'ready';
   const isRecurring = currentTask?.isRecurringParticipation === true;
   if (completeBtn) {
-    completeBtn.textContent = isRecurring
-      ? 'Выполнено на сегодня'
-      : 'Отметить задачу выполненной';
+    completeBtn.classList.toggle('task-card-ready-btn', status === 'draft');
+    completeBtn.textContent = status === 'draft'
+      ? 'Пометить как готово к работе'
+      : (isRecurring ? 'Выполнено на сегодня' : 'Отметить задачу выполненной');
   }
   if (optionCompleteBtn) {
-    optionCompleteBtn.style.display = isRecurring ? '' : 'none';
+    optionCompleteBtn.style.display = status === 'ready' && isRecurring ? '' : 'none';
   }
 }
 
 async function handlePrimaryCompleteAction() {
+  if (currentTask?.status === 'draft') {
+    await handleMarkTaskReady();
+    return;
+  }
   if (currentTask?.isRecurringParticipation) {
     await handleTaskDoneForToday();
     return;
@@ -773,24 +1200,97 @@ async function handlePrimaryCompleteAction() {
   await handleTaskCardComplete();
 }
 
-function isSwiperContext() {
-  const swiperSection = document.getElementById('swiperSection');
-  const isSwiperSection = swiperSection && window.getComputedStyle(swiperSection).display !== 'none';
-  const isSwiperPage = window.location.pathname.includes('swiper.html');
-  return isSwiperPage || isSwiperSection;
+function normalizeTaskEstimateMode(value) {
+  return ['fixed', 'range', 'epic', 'none'].includes(value) ? value : 'none';
 }
 
-async function hideTaskFromSwiper(days) {
-  if (!currentTaskId) return;
-  const storage = getStorage();
-  const until = Date.now() + days * 24 * 60 * 60 * 1000;
-  await storage.updateTask(currentTaskId, { swiperHiddenUntil: until });
-  await refreshTaskLists();
-  await closeTaskCard();
-  if (typeof window.initSwiper === 'function' && isSwiperContext()) {
-    await window.initSwiper();
-  }
+function normalizeTaskPriority(value) {
+  if (value === 'high' || value === 'medium') return value;
+  return null;
 }
+
+function hasTaskDecomposition(cardData) {
+  const steps = Array.isArray(cardData?.nextSteps) ? cardData.nextSteps : [];
+  return steps.some((step) => step && typeof step.text === 'string' && step.text.trim().length > 0);
+}
+
+function isComplexTaskForReadiness(task) {
+  const mode = normalizeTaskEstimateMode(task?.estimateMode);
+  const estimateMin = Number(task?.timeEstimateMin);
+  const range = task?.timeEstimateMinRange && typeof task.timeEstimateMinRange === 'object'
+    ? task.timeEstimateMinRange
+    : null;
+  const rangeMax = range ? Number(range.max) : null;
+
+  if (mode === 'epic') return true;
+  if (Number.isFinite(estimateMin) && estimateMin >= 120) return true;
+  if (Number.isFinite(rangeMax) && rangeMax > 120) return true;
+  return false;
+}
+
+function validateDraftReadyCriteria(task, cardData) {
+  const problems = [];
+  const title = typeof task?.text === 'string' ? task.text.trim() : '';
+  if (!title) {
+    problems.push('Добавьте название задачи.');
+  }
+
+  if (!normalizeTaskPriority(task?.priority)) {
+    problems.push('Укажите приоритет задачи.');
+  }
+
+  const mode = normalizeTaskEstimateMode(task?.estimateMode);
+  const estimateMin = Number(task?.timeEstimateMin);
+  const range = task?.timeEstimateMinRange && typeof task.timeEstimateMinRange === 'object'
+    ? task.timeEstimateMinRange
+    : null;
+  const rangeMin = range ? Number(range.min) : null;
+  const rangeMax = range ? Number(range.max) : null;
+
+  if (mode === 'fixed' || mode === 'epic') {
+    if (!Number.isFinite(estimateMin) || estimateMin <= 0) {
+      problems.push('Заполните оценку времени (минуты) для выбранного режима.');
+    }
+  }
+
+  if (mode === 'range') {
+    const isValidRange = Number.isFinite(rangeMin) && Number.isFinite(rangeMax) && rangeMin > 0 && rangeMax >= rangeMin;
+    if (!isValidRange) {
+      problems.push('Заполните корректный диапазон оценки времени (min/max).');
+    }
+  }
+
+  if (!isRecurringRoutineTaskForCard(task) && isComplexTaskForReadiness(task) && !hasTaskDecomposition(cardData)) {
+    problems.push('Для сложной задачи добавьте декомпозицию (хотя бы один следующий шаг).');
+  }
+
+  return problems;
+}
+
+async function handleMarkTaskReady() {
+  if (!currentTaskId || !currentTask) return;
+  const storage = getStorage();
+  const cardData = await storage.getTaskCardData(currentTaskId);
+  const problems = validateDraftReadyCriteria(currentTask, cardData);
+
+  if (problems.length > 0) {
+    const details = problems.map((item) => `- ${item}`).join('\n');
+    await window.dialogService.showAlert(
+      `Пока нельзя перевести задачу в готовые.\n\nНе хватает:\n${details}`
+    );
+    return;
+  }
+
+  const updated = await storage.updateTask(currentTaskId, { status: 'ready' });
+  if (updated) {
+    currentTask = updated;
+  } else {
+    currentTask = { ...currentTask, status: 'ready' };
+  }
+  displayTaskInfo();
+  await refreshTaskLists();
+}
+
 function openTitleEditor() {
   if (!currentTask) return;
   const titleElement = document.getElementById('taskCardTitle');
@@ -833,6 +1333,7 @@ async function saveTitleEditor() {
     } else if (currentTask) {
       currentTask = { ...currentTask, ...patch };
     }
+    markMeaningfulProgress();
     displayTaskInfo();
     await refreshTaskLists();
   } catch (error) {
@@ -1197,17 +1698,29 @@ async function addPomodoroSessionRecord(durationSeconds, type) {
     type
   });
   const currentTotalSeconds = Math.floor(Number(cardData?.totalTime) || 0);
+  const currentActualFocusSeconds = Math.floor(
+    Number.isFinite(Number(cardData?.actualFocusSeconds))
+      ? Number(cardData.actualFocusSeconds)
+      : Number(currentTask?.actualFocusSeconds)
+  ) || 0;
   const updatedTotalSeconds = currentTotalSeconds + durationSeconds;
+  const updatedActualFocusSeconds = currentActualFocusSeconds + durationSeconds;
   await storage.updateTaskCardData(
     currentTaskId,
     {
       pomodoroSessions: sessions,
-      totalTime: updatedTotalSeconds
+      totalTime: updatedTotalSeconds,
+      actualFocusSeconds: updatedActualFocusSeconds
     },
     {}
   );
+  if (currentTask) {
+    currentTask.totalTime = updatedTotalSeconds;
+    currentTask.actualFocusSeconds = updatedActualFocusSeconds;
+  }
   baseTotalSeconds = updatedTotalSeconds;
   displayTotalTime(updatedTotalSeconds);
+  renderPlanFactSummary(currentTask);
   await displayPomodoroHistory(sessions);
 }
 
@@ -1364,6 +1877,7 @@ async function addLogEntry() {
   const updated = await storage.addLogEntry(currentTaskId, text);
   input.value = '';
   await applyTaskUpdateToCardUI(updated);
+  markMeaningfulProgress();
 
   const cardData = await storage.getTaskCardData(currentTaskId);
   displayLog(cardData.log || []);
@@ -1453,6 +1967,8 @@ function setLogExpanded(expanded) {
 async function addNextStep() {
   const storage = getStorage();
   const input = document.getElementById('nextStepInput');
+  const sizeSelect = document.getElementById('nextStepSizeSelect');
+  const kindSelect = document.getElementById('nextStepKindSelect');
   const text = input.value.trim();
   
   if (!text) return;
@@ -1464,12 +1980,16 @@ async function addNextStep() {
     id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
     text: text,
     completed: false,
-    order: nextSteps.length
+    order: nextSteps.length,
+    size: normalizeNextStepSizeForCard(sizeSelect?.value),
+    kind: normalizeNextStepKindForCard(kindSelect?.value),
+    completedAt: null
   });
   
   const updated = await storage.updateNextSteps(currentTaskId, nextSteps);
   input.value = '';
   await applyTaskUpdateToCardUI(updated);
+  markMeaningfulProgress();
   displayNextSteps(nextSteps);
 }
 
@@ -1515,6 +2035,10 @@ function displayNextSteps(steps) {
   }
 
   if (emptyState) {
+    emptyState.textContent = isRecurringRoutineTaskForCard(currentTask)
+      ? 'Рутинное действие выполняется без отдельного следующего шага'
+      : 'Добавьте 1–3 ближайших шага, чтобы начать работу';
+    emptyState.classList.toggle('routine', isRecurringRoutineTaskForCard(currentTask));
     emptyState.style.display = activeSteps.length === 0 ? 'block' : 'none';
   }
   
@@ -1554,6 +2078,25 @@ function createNextStepElement(step) {
   const text = document.createElement('span');
   text.className = 'next-step-text';
   text.textContent = step.text;
+
+  const meta = document.createElement('span');
+  meta.className = 'next-step-meta';
+  const sizeBadge = document.createElement('span');
+  sizeBadge.className = 'next-step-badge size';
+  sizeBadge.textContent = formatNextStepSizeForCard(step.size);
+  const kindBadge = document.createElement('span');
+  kindBadge.className = 'next-step-badge kind';
+  const kindLabels = {
+    do: 'Сделать',
+    ping: 'Пинг',
+    check: 'Проверить',
+    write: 'Написать',
+    think: 'Подумать',
+    delegate: 'Делегировать'
+  };
+  kindBadge.textContent = kindLabels[normalizeNextStepKindForCard(step.kind)] || 'Сделать';
+  meta.appendChild(sizeBadge);
+  meta.appendChild(kindBadge);
   
   const deleteBtn = document.createElement('button');
   deleteBtn.className = 'next-step-delete';
@@ -1581,6 +2124,7 @@ function createNextStepElement(step) {
   
   item.appendChild(checkbox);
   item.appendChild(text);
+  item.appendChild(meta);
   item.appendChild(deleteBtn);
   
   return item;
@@ -1596,8 +2140,12 @@ async function toggleNextStep(stepId) {
   if (step) {
     const willComplete = !step.completed;
     step.completed = willComplete;
+    step.completedAt = willComplete ? Date.now() : null;
+    step.size = normalizeNextStepSizeForCard(step.size);
+    step.kind = normalizeNextStepKindForCard(step.kind);
     const updatedAfterSteps = await storage.updateNextSteps(currentTaskId, nextSteps);
     await applyTaskUpdateToCardUI(updatedAfterSteps);
+    markMeaningfulProgress();
     if (willComplete) {
       const settings = await storage.getSettings();
       if (settings?.logCompletedSteps === true) {
@@ -1624,6 +2172,7 @@ async function deleteNextStep(stepId) {
   const filtered = nextSteps.filter(s => s.id !== stepId);
   const updated = await storage.updateNextSteps(currentTaskId, filtered);
   await applyTaskUpdateToCardUI(updated);
+  markMeaningfulProgress();
   displayNextSteps(filtered);
 }
 
@@ -1684,6 +2233,7 @@ async function handleDrop(e) {
       
       const updated = await storage.updateNextSteps(currentTaskId, nextSteps);
       await applyTaskUpdateToCardUI(updated);
+      markMeaningfulProgress();
       displayNextSteps(nextSteps);
     }
   }
@@ -1701,12 +2251,26 @@ function handleDragEnd() {
 }
 
 // Переключение режима редактирования
-async function toggleEditMode() {
-  const storage = getStorage();
-  isEditing = !isEditing;
+async function toggleEditMode(options = {}) {
+  const opts = options || {};
   const editSection = document.getElementById('taskCardEditSection');
   const editBtn = document.getElementById('taskCardEditBtn');
-  
+  if (isEditing) {
+    if (opts.persistBeforeClose !== false) {
+      const canCloseEdit = await saveTaskEdit({ trigger: 'close', forceCommit: true });
+      if (canCloseEdit === false) {
+        return false;
+      }
+      await waitForSaveTaskEditQueue();
+      await persistEstimateFieldsOnEditClose();
+    }
+    isEditing = false;
+    editSection.style.display = 'none';
+    if (editBtn) editBtn.textContent = 'Редактировать';
+    return true;
+  }
+
+  isEditing = true;
   if (isEditing) {
     editSection.style.display = 'block';
     if (editBtn) editBtn.textContent = 'Отменить';
@@ -1723,17 +2287,69 @@ async function toggleEditMode() {
     if (recurrenceDaysInput) {
       recurrenceDaysInput.value = Math.max(1, Number(currentTask.recurrenceDays) || 3);
     }
+    const recurrenceModeSelect = document.getElementById('taskCardEditRecurrenceMode');
+    if (recurrenceModeSelect) {
+      recurrenceModeSelect.value = normalizeRecurrenceExecutionModeForCard(currentTask.recurrenceExecutionMode);
+    }
     updateRecurringEditControls();
-  } else {
-    editSection.style.display = 'none';
-    if (editBtn) editBtn.textContent = 'Редактировать';
+    populateEstimateEditFields();
+    updateEstimateEditControls();
+    updateEstimatePresetSelection();
   }
+  return true;
+}
+
+async function persistEstimateFieldsOnEditClose() {
+  const modeEl = document.getElementById('taskCardEditEstimateMode');
+  const minEl = document.getElementById('taskCardEditTimeEstimateRangeMin');
+  const maxEl = document.getElementById('taskCardEditTimeEstimateRangeMax');
+  if (!currentTaskId || !currentTask) return true;
+  const mode = normalizeEstimateMode(modeEl?.value);
+  if (mode !== 'range') return true;
+  const rangeEstimate = normalizeTimeEstimateRange(minEl?.value, maxEl?.value);
+  if (rangeEstimate === null) return true;
+  const storage = getStorage();
+  const updates = {
+    estimateMode: 'range',
+    timeEstimateMinRange: rangeEstimate,
+    timeEstimateMin: null,
+    timeEstimateUpdatedAt: Date.now()
+  };
+  const updated = await storage.updateTask(currentTaskId, updates);
+  if (updated) {
+    currentTask = updated;
+  } else {
+    currentTask = { ...currentTask, ...updates };
+  }
+  displayTaskInfo();
+  await refreshTaskLists();
+  return true;
+}
+
+function populateEstimateEditFields() {
+  const estimateModeSelect = document.getElementById('taskCardEditEstimateMode');
+  const estimateMinInput = document.getElementById('taskCardEditTimeEstimateMin');
+  const estimateRangeMinInput = document.getElementById('taskCardEditTimeEstimateRangeMin');
+  const estimateRangeMaxInput = document.getElementById('taskCardEditTimeEstimateRangeMax');
+  if (!estimateModeSelect || !estimateMinInput || !estimateRangeMinInput || !estimateRangeMaxInput) {
+    return;
+  }
+
+  estimateModeSelect.value = normalizeEstimateMode(currentTask?.estimateMode);
+  estimateMinInput.value = normalizePositiveIntegerOrNull(currentTask?.timeEstimateMin) || '';
+  const range = currentTask?.timeEstimateMinRange && typeof currentTask.timeEstimateMinRange === 'object'
+    ? currentTask.timeEstimateMinRange
+    : null;
+  estimateRangeMinInput.value = normalizePositiveIntegerOrNull(range?.min) || '';
+  estimateRangeMaxInput.value = normalizePositiveIntegerOrNull(range?.max) || '';
 }
 
 // Сохранение редактирования задачи
-async function saveTaskEdit() {
-  if (!isEditing) return;
-  
+async function performSaveTaskEdit(options = {}) {
+  if (!isEditing) return true;
+  const opts = options || {};
+  const trigger = typeof opts.trigger === 'string' ? opts.trigger : 'unknown';
+  const forceCommit = opts.forceCommit === true;
   const storage = getStorage();
   const updates = {
     priority: document.getElementById('taskCardEditPriority').value,
@@ -1743,13 +2359,46 @@ async function saveTaskEdit() {
   const linkValue = linkInput ? linkInput.value.trim() : '';
   if (linkValue && !isValidHttpUrl(linkValue)) {
     await window.dialogService.showAlert('Ссылка должна быть валидным URL и начинаться с http:// или https://');
-    return;
+    return false;
   }
   updates.link = linkValue || null;
   const recurringToggle = document.getElementById('taskCardEditRecurringParticipation');
   const recurrenceDaysInput = document.getElementById('taskCardEditRecurrenceDays');
+  const recurrenceModeSelect = document.getElementById('taskCardEditRecurrenceMode');
   updates.isRecurringParticipation = recurringToggle ? recurringToggle.checked : false;
   updates.recurrenceDays = Math.max(1, Math.floor(Number(recurrenceDaysInput?.value) || 3));
+  updates.recurrenceExecutionMode = updates.isRecurringParticipation
+    ? normalizeRecurrenceExecutionModeForCard(recurrenceModeSelect?.value)
+    : 'needs_next_action';
+  const estimateModeSelect = document.getElementById('taskCardEditEstimateMode');
+  const estimateMinInput = document.getElementById('taskCardEditTimeEstimateMin');
+  const estimateRangeMinInput = document.getElementById('taskCardEditTimeEstimateRangeMin');
+  const estimateRangeMaxInput = document.getElementById('taskCardEditTimeEstimateRangeMax');
+  const estimateMode = normalizeEstimateMode(estimateModeSelect?.value);
+  const fixedEstimateMin = normalizePositiveIntegerOrNull(estimateMinInput?.value);
+  const rangeEstimate = normalizeTimeEstimateRange(estimateRangeMinInput?.value, estimateRangeMaxInput?.value);
+  const isRangeInputIncomplete =
+    estimateMode === 'range' &&
+    rangeEstimate === null &&
+    (
+      normalizePositiveIntegerOrNull(estimateRangeMinInput?.value) !== null ||
+      normalizePositiveIntegerOrNull(estimateRangeMaxInput?.value) !== null
+    );
+  if (isRangeInputIncomplete && trigger === 'input' && !forceCommit) {
+    return true;
+  }
+
+  updates.estimateMode = estimateMode;
+  if (estimateMode === 'range') {
+    updates.timeEstimateMinRange = rangeEstimate;
+    updates.timeEstimateMin = null;
+  } else if (estimateMode === 'none') {
+    updates.timeEstimateMinRange = null;
+    updates.timeEstimateMin = null;
+  } else {
+    updates.timeEstimateMinRange = null;
+    updates.timeEstimateMin = fixedEstimateMin;
+  }
 
   const prev = currentTask;
   const priorityChanged =
@@ -1758,12 +2407,42 @@ async function saveTaskEdit() {
   const prevRecurrence = Math.max(1, Math.floor(Number(prev.recurrenceDays) || 3));
   const recurringChanged =
     updates.isRecurringParticipation !== (prev.isRecurringParticipation === true) ||
-    updates.recurrenceDays !== prevRecurrence;
+    updates.recurrenceDays !== prevRecurrence ||
+    updates.recurrenceExecutionMode !== normalizeRecurrenceExecutionModeForCard(prev.recurrenceExecutionMode);
+  const estimateModeChanged = normalizeEstimateMode(prev.estimateMode) !== updates.estimateMode;
+  const estimateMinChanged = normalizePositiveIntegerOrNull(prev.timeEstimateMin) !== updates.timeEstimateMin;
+  const estimateRangeChanged = !isRangeEqual(prev.timeEstimateMinRange, updates.timeEstimateMinRange);
   const deadlineChanged =
     (updates.deadline || null) !== (prev.deadline || null);
+  const todayKey = getTodayDeadlineKey();
+  const normalizedNextDeadline = updates.deadline ? String(updates.deadline).split('T')[0] : null;
+  const shouldForceTodayCapacityCheck =
+    normalizedNextDeadline &&
+    todayKey &&
+    normalizedNextDeadline === todayKey &&
+    forceTodayCapacityCheckOnNextSave;
+  forceTodayCapacityCheckOnNextSave = false;
 
-  if (!priorityChanged && !linkChanged && !recurringChanged && !deadlineChanged) {
-    return;
+  if (!priorityChanged && !linkChanged && !recurringChanged && !deadlineChanged && !estimateModeChanged && !estimateMinChanged && !estimateRangeChanged && !shouldForceTodayCapacityCheck) {
+    return true;
+  }
+
+  if (estimateModeChanged || estimateMinChanged || estimateRangeChanged) {
+    updates.timeEstimateUpdatedAt = Date.now();
+  }
+
+  if (deadlineChanged || shouldForceTodayCapacityCheck) {
+    const nextDeadline = updates.deadline ? String(updates.deadline).split('T')[0] : null;
+    if (nextDeadline && nextDeadline === todayKey) {
+      const settings = await storage.getSettings();
+      const allTasks = (await storage.getTasks()).filter((task) => task.id !== currentTaskId);
+      const candidateTask = { ...prev, ...updates, deadline: nextDeadline };
+      updates.deadline = await resolveTodayDeadlineWithCapacityInCard(candidateTask, allTasks, settings);
+      const deadlineInput = document.getElementById('taskCardEditDeadline');
+      if (deadlineInput) {
+        deadlineInput.value = updates.deadline || '';
+      }
+    }
   }
 
   if (priorityChanged || linkChanged || recurringChanged) {
@@ -1778,21 +2457,67 @@ async function saveTaskEdit() {
   } else {
     currentTask = { ...currentTask, ...updates };
   }
+  markMeaningfulProgress();
 
   displayTaskInfo();
   await refreshTaskLists();
+  return true;
+}
+
+function saveTaskEdit(options = {}) {
+  const opts = options || {};
+  saveTaskEditChain = saveTaskEditChain
+    .catch(() => true)
+    .then(() => performSaveTaskEdit(opts));
+  return saveTaskEditChain;
 }
 
 function updateRecurringEditControls() {
   const recurringToggle = document.getElementById('taskCardEditRecurringParticipation');
   const recurrenceDaysInput = document.getElementById('taskCardEditRecurrenceDays');
   const recurrenceDaysWrap = document.getElementById('taskCardEditRecurrenceDaysWrap');
+  const recurrenceModeSelect = document.getElementById('taskCardEditRecurrenceMode');
+  const recurrenceModeWrap = document.getElementById('taskCardEditRecurrenceModeWrap');
   if (!recurringToggle || !recurrenceDaysInput) return;
   const isEnabled = recurringToggle.checked;
   recurrenceDaysInput.disabled = !isEnabled;
+  if (recurrenceModeSelect) {
+    recurrenceModeSelect.disabled = !isEnabled;
+    if (isEnabled && !recurrenceModeSelect.value) {
+      recurrenceModeSelect.value = 'routine';
+    }
+  }
   if (recurrenceDaysWrap) {
     recurrenceDaysWrap.style.display = isEnabled ? 'inline-flex' : 'none';
   }
+  if (recurrenceModeWrap) {
+    recurrenceModeWrap.style.display = isEnabled ? 'inline-flex' : 'none';
+  }
+}
+
+function updateEstimateEditControls() {
+  const estimateModeSelect = document.getElementById('taskCardEditEstimateMode');
+  const fixedWrap = document.getElementById('taskCardEditTimeEstimateMinWrap');
+  const rangeWrap = document.getElementById('taskCardEditEstimateRangeWrap');
+  const presetsWrap = document.getElementById('taskCardEstimatePresets');
+  if (!estimateModeSelect || !fixedWrap || !rangeWrap || !presetsWrap) return;
+
+  const mode = normalizeEstimateMode(estimateModeSelect.value);
+  const showRange = mode === 'range';
+  const showFixed = mode === 'fixed' || mode === 'epic';
+  fixedWrap.style.display = showFixed ? 'inline-flex' : 'none';
+  presetsWrap.style.display = showFixed ? 'flex' : 'none';
+  rangeWrap.style.display = showRange ? 'flex' : 'none';
+}
+
+function updateEstimatePresetSelection() {
+  const estimateMinInput = document.getElementById('taskCardEditTimeEstimateMin');
+  const selectedMinutes = normalizePositiveIntegerOrNull(estimateMinInput?.value);
+  document.querySelectorAll('.task-card-estimate-preset').forEach((button) => {
+    const presetMinutes = normalizePositiveIntegerOrNull(button.getAttribute('data-minutes'));
+    const isActive = selectedMinutes !== null && presetMinutes === selectedMinutes;
+    button.classList.toggle('active', isActive);
+  });
 }
 
 function normalizeTaskLink(link) {
@@ -1842,7 +2567,7 @@ function closeDeleteModal() {
 async function confirmDeleteTask() {
   const storage = getStorage();
   const deletedTaskId = currentTaskId;
-  const isFlowMode = typeof window.getCurrentSectionName === 'function' && window.getCurrentSectionName() === 'flow';
+  const isFlowMode = isFlowSectionActive();
 
   await storage.deleteTask(deletedTaskId);
   closeDeleteModal();
@@ -1937,7 +2662,7 @@ async function resolveNextFlowTaskId(taskId) {
 
 async function handleTaskCardComplete() {
   if (!currentTaskId) return;
-  const isFlowMode = typeof window.getCurrentSectionName === 'function' && window.getCurrentSectionName() === 'flow';
+  const isFlowMode = isFlowSectionActive();
 
   const storage = getStorage();
   await storage.toggleTask(currentTaskId);
@@ -1954,11 +2679,6 @@ async function handleTaskCardComplete() {
   }
 
   await closeTaskCard();
-  const isSwiperPage = window.location.pathname.includes('swiper.html');
-  if (isSwiperPage) {
-    window.location.href = chrome.runtime.getURL('main.html#tasks');
-    return;
-  }
   if (typeof window.switchSection === 'function') {
     window.switchSection('tasks');
   } else {
@@ -1980,7 +2700,7 @@ async function handleTaskDoneForToday() {
   displayTaskInfo();
   await refreshTaskLists();
 
-  const isFlowMode = typeof window.getCurrentSectionName === 'function' && window.getCurrentSectionName() === 'flow';
+  const isFlowMode = isFlowSectionActive();
   if (isFlowMode) {
     const flowActive = await getFlowOrderedTasks();
     if (flowActive.length > 0) {
@@ -2005,11 +2725,7 @@ async function handleTaskDoneForToday() {
 
 async function handleOpenNextTodayTask() {
   await stopActivePomodoroSession();
-  const isFlowMode = typeof window.getCurrentSectionName === 'function' && window.getCurrentSectionName() === 'flow';
-  const swiperSection = document.getElementById('swiperSection');
-  const isSwiperSection = swiperSection && window.getComputedStyle(swiperSection).display !== 'none';
-  const isSwiperPage = window.location.pathname.includes('swiper.html');
-  const useSwiperFlow = isSwiperPage || isSwiperSection;
+  const isFlowMode = isFlowSectionActive();
 
   if (isFlowMode) {
     const flowTasks = await getFlowOrderedTasks();
@@ -2017,16 +2733,17 @@ async function handleOpenNextTodayTask() {
       await window.dialogService.showAlert('Нет активных задач.');
       return;
     }
+    await registerFlowSkipIfNeeded();
     const nextId = await resolveNextFlowTaskId(currentTaskId);
     if (nextId && typeof window.openTaskCard === 'function') {
       await window.openTaskCard(nextId);
+      return;
     }
+    await closeTaskCard();
     return;
   }
 
-  const tasks = useSwiperFlow
-    ? await getActiveTasksSorted()
-    : getTasksCardOrderedTasks(await getStorage().getTasks());
+  const tasks = getTasksCardOrderedTasks(await getStorage().getTasks());
 
   if (tasks.length === 0) {
     await window.dialogService.showAlert('Нет активных задач.');
@@ -2074,13 +2791,9 @@ async function refreshTaskLists() {
   if (typeof window.renderCompletedTasks === 'function') {
     window.renderCompletedTasks();
   }
-}
-
-async function getActiveTasksSorted() {
-  const storage = getStorage();
-  const tasks = await storage.getTasks();
-  const activeTasks = tasks.filter(task => !task.completed);
-  return sortTasksByPriorityDeadlineCreated(activeTasks);
+  if (typeof window.renderCurrentWorkflowSection === 'function') {
+    window.renderCurrentWorkflowSection();
+  }
 }
 
 function getOverdueAndTodayTasksSorted(tasks) {
@@ -2101,12 +2814,135 @@ function getTasksCardOrderedTasks(tasks) {
   ];
 }
 
+function isTaskBaseReadyForExecution(task) {
+  const status = task && task.status === 'draft' ? 'draft' : 'ready';
+  if (status !== 'ready') return false;
+  if (normalizeWorkflowStatusForCard(task?.workflowStatus) !== 'active') return false;
+  if (Math.floor(Number(task?.flowSkipCount) || 0) >= 2) return false;
+  const action = getPrimaryNextActionForCard(task);
+  if (action) return true;
+  if (isRecurringRoutineTaskForCard(task)) return true;
+  return false;
+}
+
+function isTaskReadyForExecution(task) {
+  if (!isTaskBaseReadyForExecution(task)) return false;
+  const action = getPrimaryNextActionForCard(task);
+  if (action) {
+    return isNextActionFitForWindow(action, getFlowTimeWindowForRanking());
+  }
+  if (isRecurringRoutineTaskForCard(task)) {
+    const estimateMin = resolveTaskEstimateForFlow(task) || 30;
+    return estimateMin <= getFlowTimeWindowForRanking();
+  }
+  return false;
+}
+
+function getFlowTimeWindowForRanking() {
+  const provider = window.getActiveFlowTimeWindowMin;
+  if (provider === getFlowTimeWindowForRanking) {
+    return 30;
+  }
+  const fromPopup = typeof provider === 'function'
+    ? Number(provider())
+    : NaN;
+  if ([5, 15, 30, 60, 120].includes(fromPopup)) return fromPopup;
+  return 30;
+}
+
+function resolveTaskEstimateForFlow(task) {
+  const primaryAction = getPrimaryNextActionForCard(task);
+  const actionMinutes = getNextActionMinutesForCard(primaryAction);
+  if (actionMinutes !== null) return actionMinutes;
+
+  const mode = normalizeEstimateMode(task?.estimateMode);
+  if (mode === 'none' && isRecurringRoutineTaskForCard(task)) {
+    return 30;
+  }
+  if (mode === 'none') return null;
+  if (mode === 'fixed' || mode === 'epic') {
+    return normalizePositiveIntegerOrNull(task?.timeEstimateMin);
+  }
+  if (mode === 'range') {
+    const range = task?.timeEstimateMinRange && typeof task.timeEstimateMinRange === 'object'
+      ? normalizeTimeEstimateRange(task.timeEstimateMinRange.min, task.timeEstimateMinRange.max)
+      : null;
+    return range ? Math.round((range.min + range.max) / 2) : null;
+  }
+  return null;
+}
+
+function isDeepWorkWindow(windowMin) {
+  return windowMin >= 60;
+}
+
+function computeFlowTimeAwareScore(task, windowMin) {
+  const mode = normalizeEstimateMode(task?.estimateMode);
+  const estimateMin = resolveTaskEstimateForFlow(task);
+  const safeWindow = Math.max(5, Number(windowMin) || 30);
+  const deepWork = isDeepWorkWindow(safeWindow);
+
+  let fitScore = 0;
+  if (estimateMin !== null && estimateMin > 0) {
+    const ratio = estimateMin / safeWindow;
+    if (ratio <= 1) {
+      fitScore = Math.round((1 - ratio) * 40 + 10);
+    } else {
+      fitScore = -Math.round(Math.min(60, (ratio - 1) * 45));
+    }
+
+    if (deepWork) {
+      if (ratio >= 0.8 && ratio <= 2.2) {
+        fitScore += 14;
+      } else if (ratio < 0.5) {
+        fitScore -= 8;
+      }
+    }
+  }
+
+  const isEpicLike = mode === 'epic' || (estimateMin !== null && estimateMin >= 180);
+  let epicPenalty = 0;
+  if (isEpicLike) {
+    if (safeWindow <= 15) {
+      epicPenalty = -42;
+    } else if (safeWindow <= 30) {
+      epicPenalty = -24;
+    } else if (deepWork) {
+      epicPenalty = 18;
+    }
+  }
+
+  return {
+    fitScore,
+    epicPenalty,
+    finalScore: fitScore + epicPenalty
+  };
+}
+
+function rankFlowBucketByTimeAwareScore(tasks, windowMin) {
+  return [...(tasks || [])]
+    .map((task, index) => ({
+      task,
+      index,
+      score: computeFlowTimeAwareScore(task, windowMin).finalScore
+    }))
+    .sort((a, b) => {
+      if (a.score !== b.score) return b.score - a.score;
+      return a.index - b.index;
+    })
+    .map((item) => item.task);
+}
+
 function splitActiveTasksByDeadlineBuckets(tasks) {
+  return splitTasksByDeadlineBuckets(tasks, isTaskReadyForExecution);
+}
+
+function splitTasksByDeadlineBuckets(tasks, predicate) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayKey = getDateKey(today);
 
-  const active = (tasks || []).filter(task => !task.completed);
+  const active = (tasks || []).filter(task => !task.completed && (!predicate || predicate(task)));
   const withDeadline = active.filter(task => !!task.deadline);
   const noDate = active.filter(task => !task.deadline);
   const todayTasks = withDeadline.filter(task => isTaskDueToday(task, todayKey));
@@ -2136,12 +2972,24 @@ async function getFlowOrderedTasks() {
   const storage = getStorage();
   const tasks = await storage.getTasks();
   const { overdue, todayTasks, later, noDate } = splitActiveTasksByDeadlineBuckets(tasks);
+  const flowWindowMin = getFlowTimeWindowForRanking();
 
   return [
-    ...sortByPriorityWeight([...overdue, ...todayTasks]),
-    ...sortByDeadlineThenPriority(later),
-    ...sortByPriorityWeight(noDate)
+    ...rankFlowBucketByTimeAwareScore(sortByPriorityWeight([...overdue, ...todayTasks]), flowWindowMin),
+    ...rankFlowBucketByTimeAwareScore(sortByDeadlineThenPriority(later), flowWindowMin),
+    ...rankFlowBucketByTimeAwareScore(sortByPriorityWeight(noDate), flowWindowMin)
   ];
+}
+
+async function getFlowAvailabilitySummary() {
+  const storage = getStorage();
+  const tasks = await storage.getTasks();
+  const active = (tasks || []).filter(task => !task.completed);
+  return {
+    readyCount: active.filter(isTaskBaseReadyForExecution).length,
+    fittingCount: active.filter(isTaskReadyForExecution).length,
+    windowMin: getFlowTimeWindowForRanking()
+  };
 }
 
 function isTaskDueToday(task, todayKey) {
@@ -2287,10 +3135,10 @@ function formatDeadline(deadline) {
 
 // Экспорт для popup.js (режим ФЛОУ и закрытие карточки при выходе)
 window.getFlowOrderedTasks = getFlowOrderedTasks;
+window.getFlowAvailabilitySummary = getFlowAvailabilitySummary;
 window.closeTaskCard = closeTaskCard;
 
 // Экспорт функции для использования в других модулях
 function openTaskCard(taskId) {
   return window.openTaskCard(taskId);
 }
-

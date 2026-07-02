@@ -52,11 +52,16 @@
     try {
       const content = await file.text();
       const parsed = JSON.parse(content);
-      if (!Array.isArray(parsed)) {
-        await window.dialogService.showAlert('Файл должен содержать массив задач.');
+      const parsedTasks = Array.isArray(parsed)
+        ? parsed
+        : parsed && typeof parsed === 'object' && Array.isArray(parsed.tasks)
+          ? parsed.tasks
+          : null;
+      if (!parsedTasks) {
+        await window.dialogService.showAlert('Файл должен содержать массив задач или объект с массивом tasks.');
         return;
       }
-      const normalization = normalizeImportedTasks(parsed);
+      const normalization = normalizeImportedTasks(parsedTasks);
       if (!normalization.ok) {
         await window.dialogService.showAlert(`Файл сломан: ${normalization.error}`);
         return;
@@ -81,6 +86,103 @@
     return 'medium';
   }
 
+  function normalizeTaskStatus(value) {
+    if (value === 'draft') return 'draft';
+    return 'ready';
+  }
+
+  const WORKFLOW_STATUSES = ['active', 'waiting', 'backlog', 'idea', 'killed'];
+  const NEXT_STEP_KINDS = ['do', 'ping', 'check', 'write', 'think', 'delegate'];
+  const RECURRENCE_EXECUTION_MODES = ['routine', 'needs_next_action'];
+
+  function normalizeWorkflowStatus(value) {
+    return WORKFLOW_STATUSES.includes(value) ? value : 'active';
+  }
+
+  function normalizeNullableText(value) {
+    if (value === null || value === undefined) return null;
+    if (typeof value !== 'string') return null;
+    const text = value.trim();
+    return text || null;
+  }
+
+  function normalizeDateKeyOrNull(value) {
+    if (value === null || value === undefined || value === '') return null;
+    if (typeof value !== 'string') return null;
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+    if (!match) return null;
+    return `${match[1]}-${match[2]}-${match[3]}`;
+  }
+
+  function normalizeNextStepSize(value) {
+    if (value === 'deep') return 'deep';
+    const parsed = Number(value);
+    if ([5, 15, 30, 60].includes(parsed)) return parsed;
+    return 30;
+  }
+
+  function normalizeNextStepKind(value) {
+    return NEXT_STEP_KINDS.includes(value) ? value : 'do';
+  }
+
+  function hasOpenNextSteps(steps) {
+    return Array.isArray(steps) && steps.some((step) =>
+      step && step.completed !== true && typeof step.text === 'string' && step.text.trim()
+    );
+  }
+
+  function normalizeRecurrenceExecutionMode(value, task) {
+    if (RECURRENCE_EXECUTION_MODES.includes(value)) return value;
+    if (task?.isRecurringParticipation === true && !hasOpenNextSteps(task.nextSteps)) {
+      return 'routine';
+    }
+    return 'needs_next_action';
+  }
+
+  function normalizeNextSteps(steps) {
+    if (!Array.isArray(steps)) return [];
+    return steps
+      .map((step, index) => {
+        if (!step || typeof step !== 'object' || Array.isArray(step)) return null;
+        const text = typeof step.text === 'string' ? step.text.trim() : '';
+        if (!text) return null;
+        const completedAt = step.completed === true && typeof step.completedAt === 'number' && !Number.isNaN(step.completedAt)
+          ? step.completedAt
+          : null;
+        return {
+          ...step,
+          id: typeof step.id === 'string' && step.id.trim() ? step.id.trim() : createTaskId(),
+          text,
+          completed: step.completed === true,
+          order: Number.isFinite(Number(step.order)) ? Number(step.order) : index,
+          size: normalizeNextStepSize(step.size),
+          kind: normalizeNextStepKind(step.kind),
+          completedAt
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map((step, index) => ({ ...step, order: index }));
+  }
+
+  function normalizeTaskEvents(events) {
+    if (!Array.isArray(events)) return [];
+    return events
+      .map((event) => {
+        if (!event || typeof event !== 'object' || Array.isArray(event)) return null;
+        return {
+          id: typeof event.id === 'string' && event.id.trim() ? event.id.trim() : createTaskId(),
+          type: typeof event.type === 'string' && event.type.trim() ? event.type.trim() : 'note',
+          timestamp: typeof event.timestamp === 'number' && !Number.isNaN(event.timestamp) ? event.timestamp : Date.now(),
+          payload: event.payload && typeof event.payload === 'object' && !Array.isArray(event.payload)
+            ? event.payload
+            : {}
+        };
+      })
+      .filter(Boolean)
+      .slice(-250);
+  }
+
   function normalizePriorityRank(value) {
     if (value === null || value === undefined || value === '') return null;
     const rank = Number(value);
@@ -96,6 +198,97 @@
     var match = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
     if (match) return match[1] + '-' + match[2] + '-' + match[3];
     return s;
+  }
+
+  function normalizePositiveNumberOrNull(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) return null;
+    return Math.floor(parsed);
+  }
+
+  function normalizeNonNegativeNumber(value, fallback) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed >= 0) return parsed;
+    const safeFallback = Number(fallback);
+    if (Number.isFinite(safeFallback) && safeFallback >= 0) return safeFallback;
+    return 0;
+  }
+
+  function normalizeEstimateMode(value) {
+    return ['fixed', 'range', 'epic', 'none'].includes(value) ? value : 'none';
+  }
+
+  function pickFirstDefined(source, keys) {
+    for (const key of keys) {
+      if (Object.prototype.hasOwnProperty.call(source, key)) {
+        return source[key];
+      }
+    }
+    return undefined;
+  }
+
+  function normalizeTimeEstimateRange(value) {
+    if (value === null || value === undefined || value === '') return null;
+
+    let minValue;
+    let maxValue;
+
+    if (Array.isArray(value)) {
+      minValue = value[0];
+      maxValue = value[1];
+    } else if (typeof value === 'object') {
+      minValue = pickFirstDefined(value, ['min', 'from', 'start', 'low', 'minimum', 'minMinutes']);
+      maxValue = pickFirstDefined(value, ['max', 'to', 'end', 'high', 'maximum', 'maxMinutes']);
+    } else if (typeof value === 'string') {
+      const match = value.trim().match(/^(\d+)\s*(?:-|–|—|\.{2}|…)\s*(\d+)$/);
+      if (match) {
+        minValue = match[1];
+        maxValue = match[2];
+      } else {
+        minValue = value;
+        maxValue = value;
+      }
+    } else {
+      minValue = value;
+      maxValue = value;
+    }
+
+    const min = normalizePositiveNumberOrNull(minValue);
+    const max = normalizePositiveNumberOrNull(maxValue);
+    if (min === null || max === null || max < min) return null;
+    return { min, max };
+  }
+
+  function normalizeImportedEstimateMode(value, timeEstimateMin, timeEstimateMinRange) {
+    const rawValue = typeof value === 'string' ? value.trim().toLowerCase() : value;
+    const normalized = normalizeEstimateMode(rawValue);
+    const explicitMode = ['fixed', 'range', 'epic', 'none'].includes(rawValue);
+
+    if (normalized === 'range') {
+      if (timeEstimateMinRange) return 'range';
+      return timeEstimateMin !== null ? 'fixed' : 'none';
+    }
+
+    if (normalized === 'fixed') {
+      if (timeEstimateMin !== null) return 'fixed';
+      return timeEstimateMinRange ? 'range' : 'none';
+    }
+
+    if (normalized === 'epic' || explicitMode) {
+      return normalized;
+    }
+
+    if (timeEstimateMinRange) return 'range';
+    if (timeEstimateMin !== null) return 'fixed';
+    return 'none';
+  }
+
+  function validateTimeFields(estimateMode, estimateRange, taskIndex) {
+    if (estimateMode === 'range' && !estimateRange) {
+      return { ok: false, error: `В задаче #${taskIndex} для estimateMode="range" требуется корректный timeEstimateMinRange.` };
+    }
+    return { ok: true };
   }
 
   function normalizeImportedTasks(tasks) {
@@ -122,6 +315,7 @@
       var completed = typeof task.completed === 'boolean' ? task.completed : false;
       var category = typeof task.category === 'string' ? task.category.trim() : '';
       var priority = normalizePriority(typeof task.priority === 'string' ? task.priority.trim().toLowerCase() : '');
+      var status = normalizeTaskStatus(typeof task.status === 'string' ? task.status.trim().toLowerCase() : task.status);
       var priorityRank = normalizePriorityRank(task.priorityRank);
       var deadline = normalizeDeadline(task.deadline === null || typeof task.deadline === 'string' ? task.deadline : null);
       const createdAt = typeof task.createdAt === 'number' && !Number.isNaN(task.createdAt)
@@ -130,18 +324,12 @@
       const updatedAt = typeof task.updatedAt === 'number' && !Number.isNaN(task.updatedAt)
         ? task.updatedAt
         : createdAt;
-      const postponeCount = typeof task.postponeCount === 'number' && !Number.isNaN(task.postponeCount)
-        ? task.postponeCount
-        : 0;
-      const lastPostponed = task.lastPostponed === null || typeof task.lastPostponed === 'number'
-        ? task.lastPostponed
-        : null;
       const pomodoroSessions = Array.isArray(task.pomodoroSessions) ? task.pomodoroSessions : [];
       const totalTime = typeof task.totalTime === 'number' && !Number.isNaN(task.totalTime)
         ? task.totalTime
         : 0;
       const log = Array.isArray(task.log) ? task.log : [];
-      const nextSteps = Array.isArray(task.nextSteps) ? task.nextSteps : [];
+      const nextSteps = normalizeNextSteps(Array.isArray(task.nextSteps) ? task.nextSteps : []);
       const pomodoroSettings = task.pomodoroSettings && typeof task.pomodoroSettings === 'object' && !Array.isArray(task.pomodoroSettings)
         ? task.pomodoroSettings
         : null;
@@ -149,11 +337,30 @@
       const completedAt = task.completedAt === null || typeof task.completedAt === 'number'
         ? task.completedAt
         : null;
-      const swiperHiddenUntil = task.swiperHiddenUntil === null || typeof task.swiperHiddenUntil === 'number'
-        ? task.swiperHiddenUntil
-        : null;
       const isRecurringParticipation = task.isRecurringParticipation === true;
       const recurrenceDays = Math.max(1, Number(task.recurrenceDays) || 3);
+      const timeEstimateMin = normalizePositiveNumberOrNull(task.timeEstimateMin);
+      const timeEstimateUpdatedAt = normalizeNonNegativeNumber(task.timeEstimateUpdatedAt, null) || null;
+      const rawEstimateMode = typeof task.estimateMode === 'string'
+        ? task.estimateMode.trim().toLowerCase()
+        : task.estimateMode;
+      const timeEstimateMinRange = normalizeTimeEstimateRange(task.timeEstimateMinRange);
+      const estimateMode = normalizeImportedEstimateMode(rawEstimateMode, timeEstimateMin, timeEstimateMinRange);
+      const actualFocusSeconds = normalizeNonNegativeNumber(task.actualFocusSeconds, totalTime);
+      const workflowStatus = normalizeWorkflowStatus(
+        typeof task.workflowStatus === 'string' ? task.workflowStatus.trim().toLowerCase() : task.workflowStatus
+      );
+      const recurrenceExecutionMode = normalizeRecurrenceExecutionMode(
+        typeof task.recurrenceExecutionMode === 'string' ? task.recurrenceExecutionMode.trim().toLowerCase() : task.recurrenceExecutionMode,
+        { ...task, isRecurringParticipation, nextSteps }
+      );
+      const waitingFor = normalizeNullableText(task.waitingFor);
+      const waitingUntil = normalizeDateKeyOrNull(task.waitingUntil);
+      const waitingNote = normalizeNullableText(task.waitingNote);
+      const killedAt = task.killedAt === null || typeof task.killedAt === 'number' ? task.killedAt : null;
+      const backlogAt = task.backlogAt === null || typeof task.backlogAt === 'number' ? task.backlogAt : null;
+      const ideaAt = task.ideaAt === null || typeof task.ideaAt === 'number' ? task.ideaAt : null;
+      const events = normalizeTaskEvents(task.events);
 
       const sessionsValidation = validatePomodoroSessions(pomodoroSessions, i + 1);
       if (!sessionsValidation.ok) return sessionsValidation;
@@ -161,8 +368,12 @@
       if (!logValidation.ok) return logValidation;
       const stepsValidation = validateNextSteps(nextSteps, i + 1);
       if (!stepsValidation.ok) return stepsValidation;
+      const eventsValidation = validateTaskEvents(events, i + 1);
+      if (!eventsValidation.ok) return eventsValidation;
       const settingsValidation = validatePomodoroSettings(pomodoroSettings, i + 1);
       if (!settingsValidation.ok) return settingsValidation;
+      const timeValidation = validateTimeFields(estimateMode, timeEstimateMinRange, i + 1);
+      if (!timeValidation.ok) return timeValidation;
 
       normalized.push({
         id,
@@ -170,12 +381,11 @@
         completed,
         category,
         priority,
+        status,
         priorityRank,
         deadline,
         createdAt,
         updatedAt,
-        postponeCount,
-        lastPostponed,
         pomodoroSessions,
         totalTime,
         log,
@@ -183,9 +393,22 @@
         pomodoroSettings,
         link,
         completedAt,
-        swiperHiddenUntil,
         isRecurringParticipation,
-        recurrenceDays
+        recurrenceDays,
+        recurrenceExecutionMode,
+        timeEstimateMin,
+        timeEstimateUpdatedAt,
+        actualFocusSeconds,
+        estimateMode,
+        timeEstimateMinRange,
+        workflowStatus,
+        waitingFor,
+        waitingUntil,
+        waitingNote,
+        killedAt,
+        backlogAt,
+        ideaAt,
+        events
       });
     }
 
@@ -287,7 +510,7 @@
       if (!step || typeof step !== 'object' || Array.isArray(step)) {
         return { ok: false, error: `Шаг #${i + 1} в задаче #${taskIndex} имеет неверный формат.` };
       }
-      const allowedKeys = ['id', 'text', 'completed', 'order'];
+      const allowedKeys = ['id', 'text', 'completed', 'order', 'size', 'kind', 'completedAt'];
       const requiredKeys = ['id', 'text', 'completed', 'order'];
       const keysValidation = validateKeys(step, allowedKeys, requiredKeys);
       if (!keysValidation.ok) {
@@ -304,6 +527,37 @@
       }
       if (typeof step.order !== 'number' || Number.isNaN(step.order)) {
         return { ok: false, error: `Шаг #${i + 1} в задаче #${taskIndex} имеет некорректный order.` };
+      }
+      if (![5, 15, 30, 60, 'deep'].includes(step.size)) {
+        return { ok: false, error: `Шаг #${i + 1} в задаче #${taskIndex} имеет некорректный size.` };
+      }
+      if (!NEXT_STEP_KINDS.includes(step.kind)) {
+        return { ok: false, error: `Шаг #${i + 1} в задаче #${taskIndex} имеет некорректный kind.` };
+      }
+      if (step.completedAt !== null && (typeof step.completedAt !== 'number' || Number.isNaN(step.completedAt))) {
+        return { ok: false, error: `Шаг #${i + 1} в задаче #${taskIndex} имеет некорректный completedAt.` };
+      }
+    }
+    return { ok: true };
+  }
+
+  function validateTaskEvents(events, taskIndex) {
+    for (let i = 0; i < events.length; i += 1) {
+      const event = events[i];
+      if (!event || typeof event !== 'object' || Array.isArray(event)) {
+        return { ok: false, error: `Событие #${i + 1} в задаче #${taskIndex} имеет неверный формат.` };
+      }
+      if (typeof event.id !== 'string' || !event.id.trim()) {
+        return { ok: false, error: `Событие #${i + 1} в задаче #${taskIndex} имеет некорректный id.` };
+      }
+      if (typeof event.type !== 'string' || !event.type.trim()) {
+        return { ok: false, error: `Событие #${i + 1} в задаче #${taskIndex} имеет некорректный type.` };
+      }
+      if (typeof event.timestamp !== 'number' || Number.isNaN(event.timestamp)) {
+        return { ok: false, error: `Событие #${i + 1} в задаче #${taskIndex} имеет некорректный timestamp.` };
+      }
+      if (!event.payload || typeof event.payload !== 'object' || Array.isArray(event.payload)) {
+        return { ok: false, error: `Событие #${i + 1} в задаче #${taskIndex} имеет некорректный payload.` };
       }
     }
     return { ok: true };

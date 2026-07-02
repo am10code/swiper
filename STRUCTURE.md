@@ -8,7 +8,6 @@
 - При клике на иконку расширения открывается `main.html` через `chrome.action.onClicked` в `background/background.js`.
 - Статусы страниц:
   - `main.html` — production entrypoint.
-  - `swiper.html` — secondary standalone page.
   - `popup/popup.html` — legacy page (не production runtime entrypoint).
 
 ## Правила сборки CRX
@@ -20,30 +19,37 @@
 ### Главная страница расширения (вкладка) — "Задачи"
 - **Файл:** `main.html`
 - **Стили:** `popup/popup.css`
-- **Логика:** `popup/popup.js`, `popup/task-card.js`, `popup/modules/import-export.js`, `popup/modules/prioritization.js`, `popup/modules/swiper/swiper.js`, `popup/modules/swiper/swiper-init.js`
+- **Логика:** `popup/popup.js`, `popup/task-card.js`, `popup/modules/import-export.js`, `popup/modules/prioritization.js`
 - **Назначение:** основной интерфейс управления задачами, фильтрами, настройками и карточками.
 
 **Хедер**
 - `header.header`
   - `#burgerMenuBtn` — кнопка бургер‑меню для навигации между разделами.
   - `#flowBtn` — кнопка «ФЛОУ» (текст + ✨), овальная обводка; по клику переключает на режим ФЛОУ (`switchSection('flow')`); занимает место заголовка в центре хедера.
-  - `#headerTitle` — текст названия раздела (Поиск, Настройки, ФЛОУ и т.д.); в разделе «Задачи» пустой.
-  - `#priorityPromptBtn` — кнопка-индикатор приоритизации (иконка волшебной палочки), видна если есть активные задачи без ранга.
+  - `#headerTitle` — текст названия раздела (Настройки, ФЛОУ и т.д.); в разделе «Задачи» пустой.
   - `#settingsBtn` — шестерёнка для "Настройки списка задач".
 
 **Бургер‑меню**
 - `#burgerMenu` / `.burger-menu-content`
   - `.burger-menu-item[data-section="tasks"]` — раздел "Задачи".
-  - `.burger-menu-item[data-section="search"]` — "Поиск".
   - `.burger-menu-item[data-section="completed"]` — "Выполненные задачи".
-  - `.burger-menu-item[data-section="swiper"]` — "Свайпер".
   - `.burger-menu-item[data-section="flow"]` — "ФЛОУ" (вход в режим ФЛОУ; выход — выбор любого другого раздела, например "Задачи").
-  - `.burger-menu-item[data-section="frequently-postponed"]` — "Часто откладываемые".
+  - `.burger-menu-item[data-section="movement"]` — "Движение".
+  - `.burger-menu-item[data-section="triage"]` — "Триаж".
+  - `.burger-menu-item[data-section="micro-slots"]` — "Малые слоты".
+  - `.burger-menu-item[data-section="waiting"]` — "Жду".
+  - `.burger-menu-item[data-section="backlog"]` — "Бэклог".
+  - `.burger-menu-item[data-section="ideas"]` — "Идеи".
+  - `.burger-menu-item[data-section="stale"]` — "Залежалось".
+  - `.burger-menu-item[data-section="cookbooks"]` — "Cookbooks".
   - `.burger-menu-item[data-section="settings"]` — "Настройки".
   - **Логика переключения:** `popup/popup.js` (switchSection).
 
 **Раздел "Задачи"**
 - `#tasksSection` / `.tasks-section`
+  - `.tasks-toolbar`
+    - `#priorityPromptBtn` — компактная кнопка «Что важнее», видна только если есть активные задачи без ранга.
+    - `#priorityPromptCount` — счётчик неприоритизированных задач.
   - `#overdueTasksSection` — "Просрочено".
     - `#overdueTasksList` — список карточек задач.
   - `#todayTasksSection` — "Сегодня".
@@ -55,6 +61,7 @@
     - `#noDateTasksList` — список задач без дедлайна.
   - `#emptyState` — пустое состояние.
   - **Логика разбиения:** `popup/popup.js` (renderActiveTasks).
+  - В production-списках рендера участвуют только активные задачи со статусом `ready`; `draft` не попадают в рабочую очередь.
   - Сортировка в секциях: сначала `priorityRank` (скрытый числовой ранг), затем срочность (`high/medium`), дедлайн и дата создания.
   - **Контекстное меню задачи:** `#taskContextMenu`
     - `#taskContextTodayBtn` — перенести на сегодня.
@@ -63,10 +70,16 @@
     - **Логика:** `popup/popup.js` (setupTaskContextMenu).
   - **Карточка задачи в списке:**
     - Строка следующего шага: `.task-next-step` (текст шага или плейсхолдер).
+    - Бейдж статуса: `.task-status-badge` с модификаторами `.status-draft` / `.status-ready` (отображает `Черновик` / `Готово`).
+    - Time-бейджи: `.task-time-estimate-badge` (`~15м`, `~2ч`) и бейджи ближайшего шага (`5м`, `30м`, тип действия); отдельный бейдж совместимости с текущим окном ФЛОУ не показывается.
     - Индикатор фокуса: `.task-focus-indicator` (например, `⏱ 25м`, для 25м показывается по hover/focus).
       - Клик по индикатору открывает карточку и запускает таймер.
     - Инлайн-редактирование из списка отключено (кнопка карандаша скрыта); редактирование через полную карточку задачи.
     - Просрочка: `.task-item.overdue` (тонкая левая полоска).
+  - `#tasksCommandCenter` / `.tasks-command-center` — верхняя рабочая панель страницы задач.
+    - `.tasks-command-btn` — переходы в `ФЛОУ`, `Движение`, `Малые слоты`, `Жду`, `Что важнее` с текущими счётчиками.
+    - `.tasks-command-btn.primary` — основной вход в исполнение (`Делать`).
+  - `#otherTasksSection` теперь сворачиваемый (`.collapsible`, `#laterTasksToggle`), по умолчанию в состоянии `.collapsed`.
 
 **Форма добавления задачи / режимы ввода**
 - `.add-task-section`
@@ -82,11 +95,31 @@
   - `fab` — поле снизу скрыто по умолчанию, открывается по клику на `#addTaskFab`.
 - **Логика:** `popup/popup.js` (handleAddTask, toggleTaskOptions, applyTaskCreationMode, toggleFabTaskInput).
 
-**Раздел "Поиск"**
-- `#searchSection` / `.search-section`
-  - `#searchInput` — строка поиска.
-  - `#categoryFilter`, `#priorityFilter` (Обычный/Высокий) — фильтры.
-  - **Логика:** `popup/popup.js` (handleSearchInSearchSection).
+**Раздел "Cookbooks"**
+- `#cookbooksSection` / `.cookbooks-section`
+  - `.cookbooks-header` — заголовок и короткое назначение страницы.
+  - `.cookbooks-map` — быстрые соответствия сценариев разделам приложения.
+  - `.cookbook-grid` — сетка рецептов.
+  - `.cookbook-card` — один сценарий использования с условиями, шагами и ожидаемым итогом.
+  - **Логика:** статический раздел, переключается через `popup/popup.js` (`switchSection('cookbooks')`).
+
+**Раздел "Движение"**
+- `#movementSection` / `.workflow-section.movement-section`
+  - `#movementStats` — счётчики задач, которым нужно вмешательство из-за давления или застревания: проверить ожидание, дедлайн заблокирован, описать.
+  - `#movementList` — одно-карточный разбор `.movement-card` внутри `.movement-review-shell`.
+  - `#movementEmptyState` — пустое состояние.
+  - Причины: `waiting_due`, `deadline_blocked`, `skipped`, `stale` плюс конкретные блокеры карточки (`draft`, `missing_next_action`, `no_estimate`, `too_large`) только когда они мешают текущему движению.
+  - Действия: открыть карточку, добавить следующий шаг inline, вернуть ожидание в активные, открыть ФЛОУ, отправить в бэклог/идеи/жду, пометить простую задачу как рутину.
+  - **Логика:** `popup/popup.js` (`getMovementItems`, `renderMovementSection`, `createMovementTaskCard`).
+
+**Раздел "Триаж"**
+- `#triageSection` — одно-карточный режим подготовки сырых карточек к работе.
+  - `#triageStats` показывает общий объём и причины подготовки: черновик, без шага, без оценки, крупные.
+  - `#triageList` содержит `.triage-review-shell`, а внутри только одну `.workflow-card-triage`.
+  - `.triage-review-progress` показывает позицию вида `1 из 12`.
+  - `.triage-review-controls` переключает текущую карточку кнопками `Назад` / `Дальше`.
+  - Карточки, уже попавшие в `Движение`, исключаются из `Триажа`, чтобы разделы не дублировали друг друга.
+  - **Логика:** `popup/popup.js` (`getTriageCandidates`, `renderTriageSection`, `createTriageReviewShell`).
 
 **Раздел "Настройки"**
 - `#settingsSection` / `.settings-section-page`
@@ -100,6 +133,11 @@
     - Панель действий: `.pomodoro-setting-actions`
     - `#pomodoroSaveSettingsBtn` — сохранить глобальные настройки помодоро.
     - `#pomodoroSaveStatus` — текстовый статус сохранения (`aria-live="polite"`), показывает успех/предупреждение и очищается автоматически.
+  - Блок "Планирование дня":
+    - `#dailyCapacityMinInput` — дневной capacity в минутах (диапазон 60-960).
+    - `#dailyCapacitySaveBtn` — сохранить capacity.
+    - `#dailyCapacitySaveStatus` — статус сохранения capacity (`aria-live="polite"`).
+    - Значение используется проверкой дедлайна «Сегодня» (warn + override) в создании/редактировании и в полной карточке.
   - Блок "Логи":
     - `#logCompletedStepsToggle` — глобальный чекбокс "Логировать выполнение шагов" (сохраняется сразу при переключении).
   - Блок "Добавление задач":
@@ -121,29 +159,47 @@
   - **Логика:** `popup/popup.js` (renderCompletedTasks, groupCompletedTasksByDate).
   - Выполненные задачи группируются по дате завершения: "Сегодня", "Вчера", либо дата.
 
-**Раздел "Часто откладываемые"**
-- `#frequentlyPostponedSection`
-  - `#frequentlyPostponedList`, `#frequentlyPostponedEmptyState`.
-  - **Логика:** `popup/popup.js` (renderFrequentlyPostponed).
-
 **Раздел "ФЛОУ"**
 - `#flowSection` — полноэкранный режим с одной задачей в виде полной карточки.
   - По умолчанию секция скрыта (`display: none`); при переключении на ФЛОУ показывается только она и хедер с бургером.
   - На `body` устанавливается класс `flow-mode`: overlay под хедером на весь экран; панель карточки (`#taskCardPanel`) увеличенной ширины (до ~30% шире обычной, с ограничением `max-width: 1170px`), по центру.
-  - `#flowEmptyState` — пустое состояние «Нет активных задач», если список задач в порядке ФЛОУ пуст.
+  - Панель окна времени `#flowTimeWindowPanel`:
+    - подпись `.flow-time-window-label`,
+    - группа `#flowTimeWindowButtons`,
+    - кнопки `.flow-time-window-btn[data-minutes]` со значениями `5/15/30/60/120`.
+    - Активное значение подсвечивается классом `.active`, сохраняется в `settings.activeFlowTimeWindowMin` и сразу пересчитывает очередь.
+    - Окно времени фильтрует очередь ФЛОУ: если под выбранный слот нет задач, показывается явное пустое состояние «Нет задач под N минут».
+  - `#flowEmptyState` — пустое состояние «Нет активных задач» при настоящей пустой очереди или «Нет задач под N минут», если готовые задачи есть, но они не влезают в выбранное окно.
+  - В режиме исполнения (`flow`) в очередь включаются только `ready`-задачи; `draft` исключаются из production-исполнения.
+  - Рутинные регулярные задачи (`recurrenceExecutionMode="routine"`) без следующего шага считаются исполнимыми как самостоятельное действие с дефолтной оценкой 30 минут; регулярные задачи `needs_next_action` без шага уходят в «Движение».
+  - Внутри каждого дедлайн-бакета ФЛОУ применяет time-aware ранжирование среди задач, которые влезают в выбранное окно: `fitScore` относительно выбранного окна времени и `epicPenalty` для длинных задач (штраф в коротком окне, буст в deep-work окне `60+`).
+  - Создание через FAB на странице задач после сохранения открывает полную карточку новой задачи.
   - Порядок задач: объединенный блок «просрочено + сегодня» сортируется по приоритету (`priorityRank`, затем срочность); затем идут задачи с дедлайном завтра и позже в хронологическом порядке (при равном дедлайне — по приоритету); затем задачи без дедлайна.
   - Переход между задачами в карточке: **снимок** порядка id при первом входе в ФЛОУ; внутри прохода — «следующая» по этому снимку (в т.ч. после «Выполнено на сегодня»); с **последнего** id снимка — переснимок из актуального порядка ФЛОУ и открытие первой задачи нового списка (аналог повторного входа без закрытия карточки). После «Отметить задачу выполненной» — та же логика (завершение последней в снимке → переснимок и первая в новом порядке).
-  - Выход из режима только через бургер-меню (выбор раздела «Задачи», «Поиск» и т.д. снимает `flow-mode`, сбрасывает снимок и закрывает карточку).
+  - Выход из режима только через бургер-меню (выбор любого другого раздела снимает `flow-mode`, сбрасывает снимок и закрывает карточку).
+
+**Раздел "Движение"**
+- `#movementSection` — одно-карточный режим разбора задач, которым нужен управленческий шаг из-за давления или застревания.
+  - `#movementStats` показывает общий объём и ключевые причины.
+  - `#movementList` содержит `.movement-review-shell`, а внутри только одну `.movement-card`.
+  - `.movement-review-progress` показывает позицию вида `1 из 27`.
+  - `.movement-review-controls` переключает текущую карточку кнопками `Назад` / `Дальше`.
+  - Готовые к исполнению задачи в раздел не попадают.
+
+**Раздел "Триаж"**
+- `#triageSection` — одно-карточный режим подготовки карточек, которые ещё не готовы к исполнению, но не требуют срочного движения.
+  - `#triageStats` показывает объём подготовки и причины.
+  - `#triageList` содержит `.triage-review-shell`, а внутри одну `.workflow-card-triage`.
+  - `.triage-review-progress` показывает позицию вида `1 из N`.
+  - Добавление следующего шага требует текст, явный выбор времени и явный выбор типа.
+
+**Раздел "Малые слоты"**
+- `#microSlotsSection` — список коротких следующих действий на 5-15 минут.
+  - Карточка `.micro-slot-card` показывает название задачи, ключевое действие `.micro-slot-action`, метки времени/типа и ссылку `.micro-slot-link`, если в задаче есть валидный `http/https` URL.
+  - Доступны только действия `Выполнить` и `Карточка`; быстрого переноса в `Жду` нет, чтобы задача не исчезала без оформления ожидания.
+  - Подсказки `.workflow-action-btn[data-action-help]` появляются по hover/focus с задержкой `1.2s`.
   - Подтвержденное удаление задачи в полной карточке в режиме ФЛОУ: после удаления открывается следующая задача по снимку; с последнего id выполняется переснимок, а при исчерпании задач карточка закрывается и ФЛОУ завершается.
   - **Логика:** `popup/popup.js` (switchSection, enterFlowMode, `flowSessionOrderedIds`, `refreshFlowSessionSnapshot`, пропуск повторного `enterFlowMode` при уже открытом ФЛОУ), `popup/task-card.js` (`resolveNextFlowTaskId`, `getFlowOrderedTasks`, обработчики карточки в режиме flow).
-
-**Раздел "Свайпер"**
-- `#swiperSection`
-  - `#swiperCardContainer` — контейнер карточек.
-  - `#postponeBtn`, `#scheduleBtn`, `#undoBtn`, `#editSwiperBtn`, `#deleteSwiperBtn`.
-  - `#swiperCounter`, `#swiperHint`, `#swiperEmptyState`, `#swiperBackToTasksBtn`.
-  - Горячие клавиши (когда секция видима): `ArrowLeft`, `ArrowRight`, `z/Z`, `Backspace`, `Delete`.
-  - **Логика:** `popup/modules/swiper/swiper.js`, `popup/modules/swiper/swiper-init.js`.
 
 **Раздел "Что важнее" (приоритизация)**
 - `#prioritizationSection`
@@ -156,23 +212,15 @@
   - Поведение: клик по карточке фиксирует выбор, полная карточка задачи не открывается.
   - **Логика:** `popup/popup.js`, `popup/modules/prioritization.js`.
 
-### Отдельная страница "Свайпер"
-- **Файл:** `swiper.html`
-- **Стили:** `popup/popup.css` + локальные `<style>` в `swiper.html`
-- **Логика:** `popup/modules/swiper/swiper.js`, `popup/modules/swiper/swiper-nav.js`, `popup/modules/swiper/swiper-init.js`
-- **Назначение:** standalone-экран "Свайпер" с собственным хедером и меню.
-- **Хедер:** содержит `#priorityPromptBtn`; при наличии неприоритизированных задач ведет на `main.html#prioritization`.
-- **Инициализация:** через `initSwiperPage({ standalone: true })` в `popup/modules/swiper/swiper-init.js`.
-
 ### Popup‑страница расширения
 - **Файл:** `popup/popup.html`
 - **Стили:** `popup/popup.css`
 - **Логика:** `popup/popup.js`, `popup/task-card.js`
 - **Назначение:** compact legacy-версия интерфейса (не production entrypoint), включает:
-  - "Задачи", "Поиск", "Выполненные задачи", "Часто откладываемые".
+  - "Задачи", "Выполненные задачи".
   - Форму добавления задачи и модалку редактирования.
   - "Полную карточку задачи".
-  - Структура отличается от `main.html` (другие заголовки подразделов, нет `settingsSection`, нет `swiperSection`).
+  - Структура отличается от `main.html` (другие заголовки подразделов, нет `settingsSection`).
   - В режиме legacy просроченные задачи рендерятся в блоке "сегодня", так как отдельной overdue-секции в DOM нет.
 
 ## Bootstrap и page-specific инициализация
@@ -182,12 +230,6 @@
   - формирует список доступных секций для страницы;
   - запускает page-specific bootstrap `initPopupUiPage(...)`;
   - управляет запуском/рендером секции приоритизации `prioritization`.
-- `popup/modules/swiper/swiper-init.js`:
-  - экспортирует `initSwiperPage({ standalone })`;
-  - автоматически инициализирует standalone только на `swiper.html`.
-- `popup/modules/swiper/swiper.js`:
-  - содержит ядро свайпера;
-  - навеска кнопок сделана идемпотентной (`setupSwiperButtons()` вызывается безопасно повторно).
 - `popup/task-card.js`:
   - использует `initTaskCardPage()` с защитой от повторной инициализации.
 
@@ -222,20 +264,13 @@
 - **Назначение:** безопасное подтверждение удаления задачи.
 - **Логика:** `popup/task-card.js` (openDeleteModal, confirmDeleteTask)
 
-### Модалка подтверждения удаления задачи (Свайпер)
-- **Файл:** `main.html`, `swiper.html`
-- **Контейнер:** `#swiperDeleteModal`
-- **Содержание:** `#swiperDeleteMessage`, `#swiperDeleteCancelBtn`, `#swiperDeleteConfirmBtn`
-- **Назначение:** подтверждение удаления задачи из очереди свайпа.
-- **Логика:** `popup/modules/swiper/swiper.js` (openSwiperDeleteModal, confirmSwiperDelete)
-
 ### Модальный диалог (dialog-service)
 - **Создание:** контейнер создаётся скриптом при первом вызове, не в разметке HTML.
 - **Контейнер:** `#dialogOverlay` (класс `.dialog-overlay`), внутри `#dialogBox` (класс `.dialog-box`).
 - **Содержание:** заголовок (`.dialog-title`), текст (`.dialog-message`), кнопки (`.dialog-buttons`, `.dialog-btn`, `.dialog-btn-primary`).
 - **Назначение:** сообщения и подтверждения вместо блокирующих `alert`/`confirm` (импорт, удаление задачи, закрытие карточки при активном помодоро, ошибки и подсказки).
 - **Логика и стили:** `popup/modules/dialog-service.js`, стили в `popup/popup.css` (секция «Модальный диалог»). API: `window.dialogService.showAlert(message, title?)`, `window.dialogService.showConfirm(title, message, options?)`.
-- **Страницы:** доступен на `main.html`, `popup/popup.html`, `swiper.html` (скрипт подключается до popup.js / task-card / swiper).
+- **Страницы:** доступен на `main.html`, `popup/popup.html` (скрипт подключается до popup.js / task-card).
 
 ## Полная карточка задачи
 
@@ -253,15 +288,28 @@
 - `#taskCardTitle`, `#taskCardMeta`
 - Кнопка закрытия: `#taskCardCloseBtn` (×), также Esc и клик по overlay.
   - В `#taskCardMeta` показывается ссылка задачи (если задана), правее дедлайна.
+  - В режиме ФЛОУ в `#taskCardMeta` добавляются компактные time-бейджи (`~Nм/~Nч`, размер и тип ближайшего шага); отдельный бейдж совместимости с окном времени не показывается.
   - Смена названия для активной задачи с **просроченным** дедлайном переносит дедлайн на «сегодня» (README).
 
 **Редактирование в карточке**
 - При сохранении блока: если менялись приоритет, ссылка или регулярность — для **просроченной** задачи дедлайн принудительно «сегодня»; иначе дата из формы сохраняется; если меняли только дату — введённая дата (README).
+- При установке дедлайна «Сегодня» (в т.ч. через `.deadline-quick-btn`) проверяется capacity: при перегрузе показывается предупреждение с выбором override/переноса на предложенную дату.
 - `#taskCardEditSection`
   - `#taskCardEditPriority` (Обычный/Высокий), `#taskCardEditDeadline`, `#taskCardEditLink`
+  - Блок оценки времени:
+    - `#taskCardEditEstimateMode` (`fixed|range|epic|none`)
+    - Пресеты `.task-card-estimate-preset` (5/15/30/45/60/90/120/180/240/360 минут)
+    - `#taskCardEditTimeEstimateMin` для фиксированной оценки
+    - `#taskCardEditTimeEstimateRangeMin`, `#taskCardEditTimeEstimateRangeMax` для режима `range`
   - Для `#taskCardEditLink` валидируются только URL с протоколом `http://` или `https://`.
+  - Блок план/факт:
+    - контейнер `#taskCardPlanFact`
+    - значения `#taskCardPlanValue`, `#taskCardFactValue`, `#taskCardDeviationValue`
+    - строка отклонения `#taskCardDeviationRow`
+    - подсказка `#taskCardPlanFactHint` (при сильном отклонении)
   - `#taskCardEditRecurringParticipation` — переключатель режима "регулярное участие".
   - `#taskCardEditRecurrenceDays` — период регулярности в днях (по умолчанию 3); показывается только при активном `#taskCardEditRecurringParticipation`.
+  - `#taskCardEditRecurrenceMode` — тип регулярности: `routine` для повторяемого действия без следующего шага, `needs_next_action` для регулярной работы над темой.
   - Быстрые кнопки дедлайна: `.deadline-quick-btn` (Сегодня/Завтра/На следующей неделе), блок расположен выше настроек регулярности.
 
 **Две колонки**
@@ -288,14 +336,13 @@
 
 **Действия**
 - `#taskCardCompleteBtn` — основное действие:
-  - для обычной задачи: "Отметить задачу выполненной"
-  - для регулярной задачи: "Выполнено на сегодня" (перенос дедлайна на период регулярности)
+  - для `draft`: "Пометить как готово к работе" (с чеком готовности; при провале показывается список недостающих пунктов)
+  - для обычной `ready`-задачи: "Отметить задачу выполненной"
+  - для регулярной `ready`-задачи: "Выполнено на сегодня" (перенос дедлайна на период регулярности)
 - `#taskCardNextBtn` — перейти к следующей задаче из очереди: "Просрочено (по приоритету)" → "Сегодня (по приоритету)" → "Позже (по дедлайну, при равном дедлайне — по приоритету)" → "Без дедлайна"
 - `#taskCardMoreOptionsBtn` — меню дополнительных опций
 - `#taskCardOptionsMenu`:
   - `#taskCardOptionNextWeekBtn` — перенести на следующую неделю
-  - `#taskCardOptionHideSwiper3Days` — скрыть из свайпера на 3 дня
-  - `#taskCardOptionHideSwiper1Week` — скрыть из свайпера на 1 неделю
   - `#taskCardOptionCompleteBtn` — принудительно завершить задачу
   - `#taskCardOptionEditBtn` — редактировать
   - `#taskCardOptionResetPriorityWeightBtn` — сбросить вес задачи (обнулить `priorityRank`)
@@ -303,7 +350,7 @@
 
 **Индикатор регулярности в названиях**
 - Для задач с `isRecurringParticipation = true` рядом с названием отображается серый символ `↻`.
-- Индикатор отображается во всех основных местах рендера названия задачи (списки, выполненные, часто откладываемые, полная карточка, Свайпер) и не имеет действия по клику.
+- Индикатор отображается во всех основных местах рендера названия задачи (списки, выполненные, полная карточка) и не имеет действия по клику.
 
 ## Служебные элементы и данные
 
@@ -328,4 +375,3 @@
 ### Аудио
 - В `popup/task-card.js` используются пути к `assets/audio/pomodoro-ambience.mp3` и `assets/audio/bell.wav`.
 - В текущем дереве проекта папка `assets/audio/` отсутствует.
-
