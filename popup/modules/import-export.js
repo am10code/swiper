@@ -419,7 +419,7 @@
     return Date.now().toString() + Math.random().toString(36).substr(2, 9);
   }
 
-  function validateKeys(obj, _allowedKeys, requiredKeys) {
+  function validateKeys(obj, requiredKeys) {
     const missingKeys = (requiredKeys || []).filter((key) => !Object.prototype.hasOwnProperty.call(obj, key));
     if (missingKeys.length > 0) {
       return { ok: false, error: `отсутствуют обязательные поля: ${missingKeys.join(', ')}` };
@@ -446,9 +446,8 @@
       }
 
       if (hasLegacy) {
-        const allowedKeys = ['id', 'startTime', 'endTime', 'duration'];
         const requiredKeys = ['startTime', 'endTime', 'duration'];
-        const keysValidation = validateKeys(session, allowedKeys, requiredKeys);
+        const keysValidation = validateKeys(session, requiredKeys);
         if (!keysValidation.ok) {
           return { ok: false, error: `Сессия #${i + 1} в задаче #${taskIndex}: ${keysValidation.error}` };
         }
@@ -459,9 +458,8 @@
           return { ok: false, error: `Сессия #${i + 1} в задаче #${taskIndex} содержит некорректную длительность.` };
         }
       } else {
-        const allowedKeys = ['id', 'timestamp', 'durationSeconds', 'type'];
         const requiredKeys = ['timestamp', 'durationSeconds'];
-        const keysValidation = validateKeys(session, allowedKeys, requiredKeys);
+        const keysValidation = validateKeys(session, requiredKeys);
         if (!keysValidation.ok) {
           return { ok: false, error: `Сессия #${i + 1} в задаче #${taskIndex}: ${keysValidation.error}` };
         }
@@ -474,6 +472,12 @@
         if (session.type !== undefined && typeof session.type !== 'string') {
           return { ok: false, error: `Сессия #${i + 1} в задаче #${taskIndex} имеет некорректный type.` };
         }
+        if (session.stepId !== undefined && session.stepId !== null && typeof session.stepId !== 'string') {
+          return { ok: false, error: `Сессия #${i + 1} в задаче #${taskIndex} имеет некорректный stepId.` };
+        }
+        if (session.stepText !== undefined && session.stepText !== null && typeof session.stepText !== 'string') {
+          return { ok: false, error: `Сессия #${i + 1} в задаче #${taskIndex} имеет некорректный stepText.` };
+        }
       }
     }
     return { ok: true };
@@ -485,9 +489,8 @@
       if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
         return { ok: false, error: `Лог #${i + 1} в задаче #${taskIndex} имеет неверный формат.` };
       }
-      const allowedKeys = ['id', 'text', 'timestamp'];
       const requiredKeys = ['id', 'text', 'timestamp'];
-      const keysValidation = validateKeys(entry, allowedKeys, requiredKeys);
+      const keysValidation = validateKeys(entry, requiredKeys);
       if (!keysValidation.ok) {
         return { ok: false, error: `Лог #${i + 1} в задаче #${taskIndex}: ${keysValidation.error}` };
       }
@@ -510,9 +513,8 @@
       if (!step || typeof step !== 'object' || Array.isArray(step)) {
         return { ok: false, error: `Шаг #${i + 1} в задаче #${taskIndex} имеет неверный формат.` };
       }
-      const allowedKeys = ['id', 'text', 'completed', 'order', 'size', 'kind', 'completedAt'];
       const requiredKeys = ['id', 'text', 'completed', 'order'];
-      const keysValidation = validateKeys(step, allowedKeys, requiredKeys);
+      const keysValidation = validateKeys(step, requiredKeys);
       if (!keysValidation.ok) {
         return { ok: false, error: `Шаг #${i + 1} в задаче #${taskIndex}: ${keysValidation.error}` };
       }
@@ -536,6 +538,10 @@
       }
       if (step.completedAt !== null && (typeof step.completedAt !== 'number' || Number.isNaN(step.completedAt))) {
         return { ok: false, error: `Шаг #${i + 1} в задаче #${taskIndex} имеет некорректный completedAt.` };
+      }
+      if (step.durationSec !== undefined && step.durationSec !== null
+        && (typeof step.durationSec !== 'number' || Number.isNaN(step.durationSec) || step.durationSec < 0)) {
+        return { ok: false, error: `Шаг #${i + 1} в задаче #${taskIndex} имеет некорректный durationSec.` };
       }
     }
     return { ok: true };
@@ -568,9 +574,8 @@
     if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
       return { ok: false, error: `pomodoroSettings в задаче #${taskIndex} имеет неверный формат.` };
     }
-    const allowedKeys = ['interval', 'shortBreak', 'longBreak', 'longBreakAfter'];
-    const requiredKeys = allowedKeys;
-    const keysValidation = validateKeys(settings, allowedKeys, requiredKeys);
+    const requiredKeys = ['interval', 'shortBreak', 'longBreak', 'longBreakAfter'];
+    const keysValidation = validateKeys(settings, requiredKeys);
     if (!keysValidation.ok) {
       return { ok: false, error: `pomodoroSettings в задаче #${taskIndex}: ${keysValidation.error}` };
     }

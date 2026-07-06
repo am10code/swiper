@@ -19,6 +19,8 @@ let pomodoroRemainingSeconds = 0;
 let pomodoroIntervalId = null;
 let pomodoroTargetEndTime = null;
 let pomodoroLastStartTime = null;
+/** Точка отсчёта шаг-сплита: старт сессии или момент закрытия предыдущего шага. */
+let pomodoroLastSplitAt = null;
 let isPomodoroTransitioning = false;
 let bellAudio = null;
 let bellAudioUnlocked = false;
@@ -28,6 +30,7 @@ let isTaskCardClosing = false;
 let hasMeaningfulProgressInCurrentCard = false;
 let forceTodayCapacityCheckOnNextSave = false;
 let saveTaskEditChain = Promise.resolve(true);
+let taskCardCloseBehavior = { goToTasksAfterClose: true };
 
 const PomodoroState = {
   IDLE_POMODORO: 'IDLE_POMODORO',
@@ -437,6 +440,13 @@ function isFlowSectionActive() {
   return section === 'flow';
 }
 
+function isMicroSlotsSectionActive() {
+  const section = typeof window.getCurrentSectionName === 'function'
+    ? window.getCurrentSectionName()
+    : '';
+  return section === 'micro-slots';
+}
+
 function isTaskDeadlineOverdueForCard(deadline) {
   if (window.dateUtils && typeof window.dateUtils.isDeadlineOverdue === 'function') {
     return window.dateUtils.isDeadlineOverdue(deadline);
@@ -550,8 +560,11 @@ function getStorage() {
 }
 
 // Открытие карточки задачи (определяем сразу, чтобы была доступна глобально)
-window.openTaskCard = async function(taskId) {
+window.openTaskCard = async function(taskId, options = {}) {
   lastFocusedElement = document.activeElement;
+  taskCardCloseBehavior = {
+    goToTasksAfterClose: options?.goToTasksAfterClose !== false
+  };
   // Проверяем, что DOM загружен
   if (document.readyState === 'loading') {
     await new Promise(resolve => {
@@ -599,6 +612,7 @@ window.openTaskCard = async function(taskId) {
     
     overlay.style.display = 'block';
     panel.style.display = 'flex';
+    setNextStepsFollowUpVisible(false);
     
     // Устанавливаем правильное позиционирование для центрирования
     panel.style.top = '50%';
@@ -740,6 +754,35 @@ function setupTaskCardListeners() {
       await postponeTaskToNextMonday();
     });
   }
+  const optionWaitBtn = document.getElementById('taskCardOptionWaitBtn');
+  if (optionWaitBtn) {
+    optionWaitBtn.addEventListener('click', () => {
+      closeTaskCardOptionsMenu();
+      if (currentTaskId && typeof window.openWaitingDialog === 'function') {
+        window.openWaitingDialog(currentTaskId);
+      }
+    });
+  }
+  const followUpDismissBtn = document.getElementById('nextStepsFollowUpDismissBtn');
+  if (followUpDismissBtn) {
+    followUpDismissBtn.addEventListener('click', () => {
+      setNextStepsFollowUpVisible(false);
+    });
+  }
+  // Задача ушла из исполнения (например, в «Жду») — ведём себя как при удалении:
+  // в ФЛОУ открываем следующую по снимку, иначе закрываем карточку.
+  window.addEventListener('swiper:task-left-execution', async (e) => {
+    const taskId = e?.detail?.taskId;
+    if (!taskId || taskId !== currentTaskId || !isTaskCardOpen()) return;
+    if (isFlowSectionActive()) {
+      const nextId = await resolveNextFlowTaskId(taskId);
+      if (nextId && typeof window.openTaskCard === 'function') {
+        await window.openTaskCard(nextId);
+        return;
+      }
+    }
+    closeTaskCard();
+  });
 
   document.addEventListener('click', async (e) => {
     if (optionsMenu && optionsMenu.style.display !== 'none') {
@@ -991,7 +1034,9 @@ function resetTaskCardScroll() {
 async function closeTaskCard(options = {}) {
   if (isTaskCardClosing) return;
   isTaskCardClosing = true;
-  const { goToTasksAfterClose = true } = options;
+  const goToTasksAfterClose = Object.prototype.hasOwnProperty.call(options || {}, 'goToTasksAfterClose')
+    ? options.goToTasksAfterClose !== false
+    : taskCardCloseBehavior.goToTasksAfterClose !== false;
   if (isEditing) {
     const canCloseEdit = await saveTaskEdit({ trigger: 'close-card', forceCommit: true });
     if (canCloseEdit === false) {
@@ -1035,6 +1080,7 @@ async function closeTaskCard(options = {}) {
     currentTask = null;
     resetCardProgressTracking();
     isEditing = false;
+    taskCardCloseBehavior = { goToTasksAfterClose: true };
     isPomodoroBgMuted = false;
     updatePomodoroSoundToggle();
     if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
@@ -1401,7 +1447,11 @@ async function postponeTaskToNextMonday() {
   if (!currentTaskId) return;
   const storage = getStorage();
   const nextMonday = getNextMondayDateString();
-  await storage.updateTask(currentTaskId, { deadline: nextMonday });
+  const updates = { deadline: nextMonday };
+  if (currentTask?.deadline && String(currentTask.deadline).split('T')[0] !== nextMonday) {
+    updates.deadlineMoveCount = Math.floor(Number(currentTask.deadlineMoveCount) || 0) + 1;
+  }
+  await storage.updateTask(currentTaskId, updates);
   await refreshTaskLists();
   await handleOpenNextTodayTask();
 }
@@ -1568,6 +1618,7 @@ async function startPomodoro() {
   unlockBellAudio();
   startPomodoroAudio();
   pomodoroLastStartTime = Date.now();
+  pomodoroLastSplitAt = Date.now();
   clearPomodoroInterval();
   pomodoroTargetEndTime = Date.now() + pomodoroRemainingSeconds * 1000;
   setPomodoroState(PomodoroState.RUNNING_POMODORO);
@@ -1678,6 +1729,7 @@ function showPomodoroNotification(title, message) {
 }
 
 async function finalizePomodoroElapsed(type) {
+  pomodoroLastSplitAt = null;
   if (!pomodoroLastStartTime) return;
   const elapsedSeconds = Math.max(0, Math.floor((Date.now() - pomodoroLastStartTime) / 1000));
   pomodoroLastStartTime = null;
@@ -1991,6 +2043,7 @@ async function addNextStep() {
   await applyTaskUpdateToCardUI(updated);
   markMeaningfulProgress();
   displayNextSteps(nextSteps);
+  setNextStepsFollowUpVisible(false);
 }
 
 // Отображение следующих шагов
@@ -2130,6 +2183,17 @@ function createNextStepElement(step) {
   return item;
 }
 
+// Баннер «Шаг выполнен — что дальше?» под полем добавления шага.
+function setNextStepsFollowUpVisible(visible) {
+  const banner = document.getElementById('nextStepsFollowUpBanner');
+  if (!banner) return;
+  banner.style.display = visible ? 'flex' : 'none';
+  if (visible) {
+    const input = document.getElementById('nextStepInput');
+    if (input) setTimeout(() => input.focus(), 0);
+  }
+}
+
 // Переключение статуса следующего шага
 async function toggleNextStep(stepId) {
   const storage = getStorage();
@@ -2143,6 +2207,15 @@ async function toggleNextStep(stepId) {
     step.completedAt = willComplete ? Date.now() : null;
     step.size = normalizeNextStepSizeForCard(step.size);
     step.kind = normalizeNextStepKindForCard(step.kind);
+    // Шаг-сплит: при активной помодоро-сессии шаг получает время с момента
+    // старта сессии или предыдущего закрытого шага. Время задачи здесь не
+    // инкрементируется — его запишет сама помодоро-сессия (без двойного счёта).
+    let splitSec = null;
+    if (willComplete && pomodoroState === PomodoroState.RUNNING_POMODORO && pomodoroLastSplitAt) {
+      splitSec = Math.max(1, Math.floor((Date.now() - pomodoroLastSplitAt) / 1000));
+      pomodoroLastSplitAt = Date.now();
+      step.durationSec = splitSec;
+    }
     const updatedAfterSteps = await storage.updateNextSteps(currentTaskId, nextSteps);
     await applyTaskUpdateToCardUI(updatedAfterSteps);
     markMeaningfulProgress();
@@ -2150,9 +2223,10 @@ async function toggleNextStep(stepId) {
       const settings = await storage.getSettings();
       if (settings?.logCompletedSteps === true) {
         const stepText = String(step.text || '').trim() || 'Без названия';
+        const splitLabel = splitSec ? ` (${splitSec < 60 ? '<1м' : `${Math.round(splitSec / 60)}м`})` : '';
         const updatedAfterLog = await storage.addLogEntry(
           currentTaskId,
-          `Выполнен шаг: ${stepText}`
+          `Выполнен шаг: ${stepText}${splitLabel}`
         );
         await applyTaskUpdateToCardUI(updatedAfterLog);
         const updatedCardData = await storage.getTaskCardData(currentTaskId);
@@ -2160,6 +2234,10 @@ async function toggleNextStep(stepId) {
       }
     }
     displayNextSteps(nextSteps);
+    // Последний открытый шаг закрыт — сразу подталкиваем к следующему,
+    // чтобы задача не выпадала из исполнимых.
+    const hasOpenSteps = nextSteps.some(s => s && !s.completed && String(s.text || '').trim());
+    setNextStepsFollowUpVisible(willComplete && !hasOpenSteps && !currentTask?.completed);
   }
 }
 
@@ -2451,6 +2529,12 @@ async function performSaveTaskEdit(options = {}) {
     }
   }
 
+  // Счётчик переносов дедлайна: явное изменение существующей даты на другую.
+  if (deadlineChanged && prev.deadline && updates.deadline &&
+      String(prev.deadline).split('T')[0] !== String(updates.deadline).split('T')[0]) {
+    updates.deadlineMoveCount = Math.floor(Number(prev.deadlineMoveCount) || 0) + 1;
+  }
+
   const updated = await storage.updateTask(currentTaskId, updates);
   if (updated) {
     currentTask = updated;
@@ -2663,6 +2747,7 @@ async function resolveNextFlowTaskId(taskId) {
 async function handleTaskCardComplete() {
   if (!currentTaskId) return;
   const isFlowMode = isFlowSectionActive();
+  const isMicroSlotsMode = isMicroSlotsSectionActive();
 
   const storage = getStorage();
   await storage.toggleTask(currentTaskId);
@@ -2675,6 +2760,11 @@ async function handleTaskCardComplete() {
       return;
     }
     await closeTaskCard();
+    return;
+  }
+
+  if (isMicroSlotsMode) {
+    await closeTaskCard({ goToTasksAfterClose: false });
     return;
   }
 
@@ -3137,8 +3227,3 @@ function formatDeadline(deadline) {
 window.getFlowOrderedTasks = getFlowOrderedTasks;
 window.getFlowAvailabilitySummary = getFlowAvailabilitySummary;
 window.closeTaskCard = closeTaskCard;
-
-// Экспорт функции для использования в других модулях
-function openTaskCard(taskId) {
-  return window.openTaskCard(taskId);
-}

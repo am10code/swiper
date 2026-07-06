@@ -83,8 +83,7 @@
       var count = orderedCount;
       var votes = 0;
       for (var i = 0; i < queueCount; i += 1) {
-        var size = Math.max(1, count);
-        votes += Math.ceil(Math.log2(size + 1));
+        votes += count === 0 ? 0 : Math.ceil(Math.log2(count + 1));
         count += 1;
       }
       return votes;

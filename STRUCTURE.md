@@ -34,13 +34,13 @@
   - `.burger-menu-item[data-section="tasks"]` — раздел "Задачи".
   - `.burger-menu-item[data-section="completed"]` — "Выполненные задачи".
   - `.burger-menu-item[data-section="flow"]` — "ФЛОУ" (вход в режим ФЛОУ; выход — выбор любого другого раздела, например "Задачи").
-  - `.burger-menu-item[data-section="movement"]` — "Движение".
-  - `.burger-menu-item[data-section="triage"]` — "Триаж".
+  - `.burger-menu-item[data-section="movement"]` — "Разобрать" (Движение + Триаж).
   - `.burger-menu-item[data-section="micro-slots"]` — "Малые слоты".
   - `.burger-menu-item[data-section="waiting"]` — "Жду".
   - `.burger-menu-item[data-section="backlog"]` — "Бэклог".
   - `.burger-menu-item[data-section="ideas"]` — "Идеи".
-  - `.burger-menu-item[data-section="stale"]` — "Залежалось".
+  - `.burger-menu-item[data-section="stale"]` — "Ревью".
+  - `.burger-menu-item[data-section="analytics"]` — "Инсайты".
   - `.burger-menu-item[data-section="cookbooks"]` — "Cookbooks".
   - `.burger-menu-item[data-section="settings"]` — "Настройки".
   - **Логика переключения:** `popup/popup.js` (switchSection).
@@ -52,7 +52,7 @@
     - `#priorityPromptCount` — счётчик неприоритизированных задач.
   - `#overdueTasksSection` — "Просрочено".
     - `#overdueTasksList` — список карточек задач.
-  - `#todayTasksSection` — "Сегодня".
+  - `#todayTasksSection` — "Фокус дня" (`#focusCapacityWrap` — прогресс план/capacity).
     - `#todayTasksList` — список карточек задач.
   - `#otherTasksSection` — "Позже".
     - `#otherTasksList` — список карточек задач.
@@ -76,9 +76,10 @@
       - Клик по индикатору открывает карточку и запускает таймер.
     - Инлайн-редактирование из списка отключено (кнопка карандаша скрыта); редактирование через полную карточку задачи.
     - Просрочка: `.task-item.overdue` (тонкая левая полоска).
-  - `#tasksCommandCenter` / `.tasks-command-center` — верхняя рабочая панель страницы задач.
-    - `.tasks-command-btn` — переходы в `ФЛОУ`, `Движение`, `Малые слоты`, `Жду`, `Что важнее` с текущими счётчиками.
-    - `.tasks-command-btn.primary` — основной вход в исполнение (`Делать`).
+  - `#tasksCommandCenter` / `.tasks-command-center` — стартовый блок страницы задач.
+    - `.start-time-block` — «Сколько у тебя времени?»: `.start-time-chip[5/15/30/60/120]` со счётчиками подходящих задач, CTA `.start-cta-btn` («Начать — «задача», ~оценка»; 5–15м → «Малые слоты», 30м+ → ФЛОУ) и подсказка `.start-cta-hint`.
+    - Строка «Требует решения»: `.start-decision-row` с `.tasks-command-btn` — `Разобрать`, `Жду` (due из total), `Что важнее`, `Ревью`.
+    - Логика: `popup/popup.js` (renderTasksCommandCenter, getRunnableTasksForWindow, startWorkForWindow).
   - `#otherTasksSection` теперь сворачиваемый (`.collapsible`, `#laterTasksToggle`), по умолчанию в состоянии `.collapsed`.
 
 **Форма добавления задачи / режимы ввода**
@@ -102,6 +103,16 @@
   - `.cookbook-grid` — сетка рецептов.
   - `.cookbook-card` — один сценарий использования с условиями, шагами и ожидаемым итогом.
   - **Логика:** статический раздел, переключается через `popup/popup.js` (`switchSection('cookbooks')`).
+
+**Раздел "Инсайты"**
+- `#analyticsSection` / `.analytics-section`
+  - `.analytics-header` — заголовок, короткое назначение и переключатель периода.
+  - `#analyticsPeriodTabs` / `.analytics-period-tabs` — период отчета: `7 дней`, `30 дней`, `Все время`; состояние runtime-only.
+  - `#analyticsContent` / `.analytics-content` — контейнер отчета.
+  - Блоки отчета: «Диагноз», «Самые проблемные», «План/факт», «Дедлайны и ожидания», «Шаги», «Время по режимам».
+  - Действие `Открыть` у задач вызывает существующее открытие полной карточки; destructive actions из аналитики не запускаются.
+  - **Логика UI:** `popup/popup.js` (`renderAnalyticsSection`, переключение через `switchSection('analytics')`).
+  - **Агрегация:** `popup/modules/analytics.js` (`window.createAnalyticsReport(tasks, { periodDays })`), без доступа к DOM/storage.
 
 **Раздел "Движение"**
 - `#movementSection` / `.workflow-section.movement-section`
@@ -195,6 +206,10 @@
 
 **Раздел "Малые слоты"**
 - `#microSlotsSection` — список коротких следующих действий на 5-15 минут.
+  - `#microSlotBar` — sticky-полоска слота: `#microSlotTime` (остаток/`Слот 15м`), `#microSlotProgress` (`сделано N · Xм`), `#microSlotToggleBtn` («Начать слот Nм»/«Завершить»); классы `.running`/`.expiring`.
+  - `#microSlotSummary` — сводка слота: `#microSlotSummaryTitle`, `#microSlotSummaryBody` (разбивка по задачам), `#microSlotExtendBtn` («Ещё 5 минут», только при истечении), `#microSlotFinishBtn`.
+  - Конвейер: активный шаг `.micro-slot-card.active` с секундомером `#microActiveStopwatch` и кнопкой «Пропустить»; заметка после шага — `.micro-note-row`.
+  - **Логика:** `popup/popup.js` (startMicroSlot, tickMicroSlot, expireMicroSlot, extendMicroSlot, finishMicroSlot, completeMicroStep, skipMicroStep, createMicroNoteRow; storage.addMicroFocusSession).
   - Карточка `.micro-slot-card` показывает название задачи, ключевое действие `.micro-slot-action`, метки времени/типа и ссылку `.micro-slot-link`, если в задаче есть валидный `http/https` URL.
   - Доступны только действия `Выполнить` и `Карточка`; быстрого переноса в `Жду` нет, чтобы задача не исчезала без оформления ожидания.
   - Подсказки `.workflow-action-btn[data-action-help]` появляются по hover/focus с задержкой `1.2s`.
@@ -256,6 +271,13 @@
 - **Содержание:** radio `name="taskDisplayMode"` (все/только сегодня), кнопка `#taskSettingsOkBtn`
 - **Назначение:** переключение режима отображения задач.
 - **Логика:** `popup/popup.js` (openTaskSettingsModal, saveTaskSettings)
+
+### Модалка "Перевести в Жду"
+- **Файл:** `main.html`
+- **Контейнер:** `#taskWaitingModal` (z-index поверх карточки и ФЛОУ)
+- **Содержание:** `#taskWaitingForInput` (кого/чего жду, обязательное), `#taskWaitingUntilInput` (дата проверки, по умолчанию +3 дня, обязательное), `#taskWaitingNoteInput`, кнопки `#taskWaitingCancelBtn` / `#taskWaitingConfirmBtn`.
+- **Входы:** полная карточка (`#taskCardOptionWaitBtn` в «Больше опций»), контекстное меню списка (`#taskContextWaitBtn`).
+- **Логика:** `popup/popup.js` (openWaitingDialog, confirmWaitingDialog, setupWaitingDialog); после перевода диспатчится `swiper:task-left-execution`, в ФЛОУ карточка переходит к следующей задаче по снимку (`popup/task-card.js`).
 
 ### Модалка подтверждения удаления задачи
 - **Файл:** `main.html`, `popup/popup.html`

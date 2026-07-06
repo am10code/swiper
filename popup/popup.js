@@ -12,16 +12,8 @@ function createIcon(iconName, size = 16) {
   svg.style.display = 'block';
   
   const icons = {
-    'settings': { viewBox: '0 0 50 50', path: '<path style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;" d="M46.999,27.708v-5.5l-6.546-1.07c-0.388-1.55-0.996-3.007-1.798-4.342l3.815-5.437L38.58,7.472l-5.368,3.859c-1.338-0.81-2.805-1.428-4.366-1.817L27.706,3h-5.5l-1.06,6.492c-1.562,0.383-3.037,0.993-4.379,1.799l-5.352-3.824l-3.889,3.887l3.765,5.384c-0.814,1.347-1.433,2.82-1.826,4.392l-6.464,1.076v5.5l6.457,1.145c0.39,1.568,1.009,3.041,1.826,4.391l-3.816,5.337l3.887,3.891l5.391-3.776c1.346,0.808,2.817,1.423,4.379,1.808L22.206,47h5.5l1.156-6.513c1.554-0.394,3.022-1.013,4.355-1.824l5.428,3.809l3.888-3.891l-3.875-5.38c0.802-1.335,1.411-2.794,1.795-4.344L46.999,27.708z"/><circle style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;" cx="25" cy="25" r="7"/>' },
-    'edit': { viewBox: '0 0 297.068 297.068', path: '<path style="fill:currentColor;" d="M288.758,46.999l-38.69-38.69c-5.347-5.354-12.455-8.303-20.02-8.303s-14.672,2.943-20.02,8.297L28.632,190.266L0,297.061l107.547-28.805L288.745,87.045c5.36-5.354,8.323-12.462,8.323-20.026S294.105,52.347,288.758,46.999z M43.478,193.583L180.71,55.823l60.554,60.541L103.761,253.866L43.478,193.583z M37.719,206.006l53.368,53.362l-42.404,11.35L26.35,248.384L37.719,206.006z M279.657,77.951l-19.493,19.505l-60.579-60.541l19.544-19.525c5.823-5.848,16.016-5.842,21.851,0l38.69,38.696c2.924,2.918,4.544,6.8,4.544,10.926C284.214,71.139,282.594,75.027,279.657,77.951z"/>' },
-    'pencil': { viewBox: '0 0 297.068 297.068', path: '<path style="fill:currentColor;" d="M288.758,46.999l-38.69-38.69c-5.347-5.354-12.455-8.303-20.02-8.303s-14.672,2.943-20.02,8.297L28.632,190.266L0,297.061l107.547-28.805L288.745,87.045c5.36-5.354,8.323-12.462,8.323-20.026S294.105,52.347,288.758,46.999z M43.478,193.583L180.71,55.823l60.554,60.541L103.761,253.866L43.478,193.583z M37.719,206.006l53.368,53.362l-42.404,11.35L26.35,248.384L37.719,206.006z M279.657,77.951l-19.493,19.505l-60.579-60.541l19.544-19.525c5.823-5.848,16.016-5.842,21.851,0l38.69,38.696c2.924,2.918,4.544,6.8,4.544,10.926C284.214,71.139,282.594,75.027,279.657,77.951z"/>' },
     'trash': { viewBox: '0 0 64 64', path: '<g transform="translate(232, 228)"><polygon style="fill:currentColor;" points="-207.5,-205.1 -204.5,-205.1 -204.5,-181.1 -207.5,-181.1"/><polygon style="fill:currentColor;" points="-201.5,-205.1 -198.5,-205.1 -198.5,-181.1 -201.5,-181.1"/><polygon style="fill:currentColor;" points="-195.5,-205.1 -192.5,-205.1 -192.5,-181.1 -195.5,-181.1"/><polygon style="fill:currentColor;" points="-219.5,-214.1 -180.5,-214.1 -180.5,-211.1 -219.5,-211.1"/><path style="fill:currentColor;" d="M-192.6-212.6h-2.8v-3c0-0.9-0.7-1.6-1.6-1.6h-6c-0.9,0-1.6,0.7-1.6,1.6v3h-2.8v-3c0-2.4,2-4.4,4.4-4.4h6c2.4,0,4.4,2,4.4,4.4V-212.6"/><path style="fill:currentColor;" d="M-191-172.1h-18c-2.4,0-4.5-2-4.7-4.4l-2.8-36l3-0.2l2.8,36c0.1,0.9,0.9,1.6,1.7,1.6h18c0.9,0,1.7-0.8,1.7-1.6l2.8-36l3,0.2l-2.8,36C-186.5-174-188.6-172.1-191-172.1"/></g>' },
-    'delete': { viewBox: '0 0 64 64', path: '<g transform="translate(232, 228)"><polygon style="fill:currentColor;" points="-207.5,-205.1 -204.5,-205.1 -204.5,-181.1 -207.5,-181.1"/><polygon style="fill:currentColor;" points="-201.5,-205.1 -198.5,-205.1 -198.5,-181.1 -201.5,-181.1"/><polygon style="fill:currentColor;" points="-195.5,-205.1 -192.5,-205.1 -192.5,-181.1 -195.5,-181.1"/><polygon style="fill:currentColor;" points="-219.5,-214.1 -180.5,-214.1 -180.5,-211.1 -219.5,-211.1"/><path style="fill:currentColor;" d="M-192.6-212.6h-2.8v-3c0-0.9-0.7-1.6-1.6-1.6h-6c-0.9,0-1.6,0.7-1.6,1.6v3h-2.8v-3c0-2.4,2-4.4,4.4-4.4h6c2.4,0,4.4,2,4.4,4.4V-212.6"/><path style="fill:currentColor;" d="M-191-172.1h-18c-2.4,0-4.5-2-4.7-4.4l-2.8-36l3-0.2l2.8,36c0.1,0.9,0.9,1.6,1.7,1.6h18c0.9,0,1.7-0.8,1.7-1.6l2.8-36l3,0.2l-2.8,36C-186.5-174-188.6-172.1-191-172.1"/></g>' }
   };
-  
-  // Алиасы для совместимости
-  if (iconName === 'pencil') iconName = 'edit';
-  if (iconName === 'delete') iconName = 'trash';
   
   const icon = icons[iconName];
   if (!icon) return null;
@@ -43,6 +35,8 @@ let movementActiveTaskId = null;
 let movementActiveIndex = 0;
 let triageActiveTaskId = null;
 let triageActiveIndex = 0;
+let staleActiveTaskId = null;
+let staleActiveIndex = 0;
 let currentTaskCreationMode = 'bottom';
 let isFabInputOpen = false;
 let prioritizationEngine = null;
@@ -56,7 +50,11 @@ let currentSectionName = 'tasks';
 let flowSessionOrderedIds = null;
 const FLOW_TIME_WINDOW_OPTIONS = [5, 15, 30, 60, 120];
 let activeFlowTimeWindowMin = 30;
+let showFutureMicroSlotSteps = true;
+let analyticsPeriodDays = 7;
 const WORKFLOW_SECTION_NAMES = ['movement', 'triage', 'micro-slots', 'waiting', 'backlog', 'ideas', 'stale'];
+/** @type {string|null} Задача, у которой только что закрыт последний шаг — показываем «Что дальше?». */
+let nextActionPromptTaskId = null;
 const WORKFLOW_UI_STATUSES = ['active', 'waiting', 'backlog', 'idea', 'killed'];
 const NEXT_STEP_UI_KINDS = ['do', 'ping', 'check', 'write', 'think', 'delegate'];
 const RECURRENCE_EXECUTION_MODES_UI = ['routine', 'needs_next_action'];
@@ -454,6 +452,7 @@ function resolveAvailableSections(pageKind) {
     if (document.getElementById('backlogSection')) sections.push('backlog');
     if (document.getElementById('ideasSection')) sections.push('ideas');
     if (document.getElementById('staleSection')) sections.push('stale');
+    if (document.getElementById('analyticsSection')) sections.push('analytics');
     if (document.getElementById('cookbooksSection')) sections.push('cookbooks');
   }
   return sections;
@@ -474,9 +473,11 @@ async function initPopupUiPage(pageKind) {
   const initialSettings = await storage.getSettings();
   currentTaskCreationMode = initialSettings.taskCreationMode === 'fab' ? 'fab' : 'bottom';
   activeFlowTimeWindowMin = normalizeFlowTimeWindowMin(initialSettings.activeFlowTimeWindowMin);
+  showFutureMicroSlotSteps = initialSettings.showFutureMicroSlotSteps !== false;
   await loadCategories();
   setupEventListeners();
   updateFlowTimeWindowUi();
+  updateMicroSlotFutureToggleUi();
 
   // Поддержка back/forward навигации.
   window.addEventListener('hashchange', async () => {
@@ -511,6 +512,9 @@ async function loadTasks() {
   updatePriorityPromptVisibility();
   // renderActiveTasks вызывается в switchSection после отображения раздела
   renderCompletedTasks();
+  if (getCurrentSectionName() === 'analytics') {
+    renderAnalyticsSection();
+  }
 }
 
 // Загрузка категорий
@@ -647,10 +651,62 @@ function setupEventListeners() {
       await moveAllOverdueTasksToToday();
     });
   }
+  const microSlotToggleBtn = document.getElementById('microSlotToggleBtn');
+  if (microSlotToggleBtn) {
+    microSlotToggleBtn.addEventListener('click', () => {
+      if (microSlot) {
+        stopMicroSlotManually();
+      } else {
+        startMicroSlot();
+      }
+    });
+  }
+  const microSlotSoundToggleBtn = document.getElementById('microSlotSoundToggleBtn');
+  if (microSlotSoundToggleBtn) {
+    microSlotSoundToggleBtn.addEventListener('click', () => {
+      setMicroSlotSoundEnabled(!isMicroSlotSoundEnabled());
+    });
+    updateMicroSlotSoundToggle();
+  }
+  const microSlotFutureToggle = document.getElementById('microSlotFutureToggle');
+  if (microSlotFutureToggle) {
+    microSlotFutureToggle.addEventListener('change', async () => {
+      showFutureMicroSlotSteps = microSlotFutureToggle.checked;
+      await storage.updateSettings({ showFutureMicroSlotSteps });
+      renderTasksCommandCenter();
+      renderMicroSlotsSection();
+    });
+    updateMicroSlotFutureToggleUi();
+  }
+  const analyticsPeriodTabs = document.getElementById('analyticsPeriodTabs');
+  if (analyticsPeriodTabs) {
+    analyticsPeriodTabs.addEventListener('click', (event) => {
+      const button = event.target.closest('.analytics-period-tab');
+      if (!button || !analyticsPeriodTabs.contains(button)) return;
+      const value = button.getAttribute('data-period-days');
+      analyticsPeriodDays = value === 'all' ? null : Number(value) || 7;
+      renderAnalyticsSection();
+    });
+  }
+  const microSlotExtendBtn = document.getElementById('microSlotExtendBtn');
+  if (microSlotExtendBtn) {
+    microSlotExtendBtn.addEventListener('click', () => extendMicroSlot());
+  }
+  const microSlotFinishBtn = document.getElementById('microSlotFinishBtn');
+  if (microSlotFinishBtn) {
+    microSlotFinishBtn.addEventListener('click', () => finishMicroSlot());
+  }
   const flowTimeWindowButtons = document.querySelectorAll('.flow-time-window-btn');
   flowTimeWindowButtons.forEach((button) => {
     button.addEventListener('click', async () => {
       const nextWindow = normalizeFlowTimeWindowMin(button.getAttribute('data-minutes'));
+      // Окна 5/15 — это режим коротких шагов: из ФЛОУ переключаемся в список,
+      // чтобы не открывать полную карточку под двухминутный пинг.
+      if (nextWindow <= 15 && isFlowSectionName(getCurrentSectionName())) {
+        await applyFlowTimeWindow(nextWindow, { persist: true, refreshFlow: false });
+        switchSection('micro-slots');
+        return;
+      }
       await applyFlowTimeWindow(nextWindow, { persist: true, refreshFlow: true });
     });
   });
@@ -829,6 +885,8 @@ function setupEventListeners() {
 
   setupDeadlineQuickButtons();
   setupTaskContextMenu();
+  setupWaitingDialog();
+  setupAddTaskDeadlineChips();
 
   const noDateToggle = document.getElementById('noDateTasksToggle');
   if (noDateToggle) {
@@ -848,24 +906,52 @@ function setupEventListeners() {
 }
 
 // Обработка добавления задачи
+// Выбранный чип даты в форме добавления: 'today' | 'week' | 'none'.
+let addTaskDeadlineChoice = 'none';
+
+function getAddTaskDeadlineFromChoice() {
+  if (addTaskDeadlineChoice === 'today') return getDateStringWithOffset(0);
+  if (addTaskDeadlineChoice === 'week') return getDateStringWithOffset(7);
+  return null;
+}
+
+function updateAddTaskDeadlineChips() {
+  document.querySelectorAll('.add-deadline-chip').forEach(chip => {
+    chip.classList.toggle('active', chip.getAttribute('data-deadline-choice') === addTaskDeadlineChoice);
+  });
+}
+
+function setupAddTaskDeadlineChips() {
+  document.querySelectorAll('.add-deadline-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      addTaskDeadlineChoice = chip.getAttribute('data-deadline-choice') || 'none';
+      updateAddTaskDeadlineChips();
+    });
+  });
+  updateAddTaskDeadlineChips();
+}
+
 async function handleAddTask(e) {
   e.preventDefault();
   const taskInput = document.getElementById('taskInput');
   const categorySelect = document.getElementById('categorySelect');
   const prioritySelect = document.getElementById('prioritySelect');
   const deadlineInput = document.getElementById('deadlineInput');
-  const defaultDeadline = getDateStringWithOffset(0);
+  // Дедлайн — только явный выбор: точная дата из опций или чип
+  // «Сегодня»/«Неделя»; по умолчанию задача создаётся без даты.
   const deadlineRaw = deadlineInput.value ? deadlineInput.value.trim() : '';
   const task = {
     text: taskInput.value.trim(),
     category: categorySelect.value,
     priority: prioritySelect.value,
-    deadline: deadlineRaw || defaultDeadline
+    deadline: deadlineRaw || getAddTaskDeadlineFromChoice()
   };
 
   if (task.text) {
     const currentSettings = await storage.getSettings();
-    task.deadline = await resolveTodayDeadlineWithCapacityGuard(task, currentTasks, currentSettings);
+    if (task.deadline) {
+      task.deadline = await resolveTodayDeadlineWithCapacityGuard(task, currentTasks, currentSettings);
+    }
     const capacityCheck = validateDeadlineCapacity(task, currentTasks, currentSettings);
     logger.debug('deadlineCapacityValidation:add', capacityCheck);
     const shouldOpenCreatedTaskCard = currentTaskCreationMode === 'fab'
@@ -1419,6 +1505,12 @@ function switchSection(sectionName, updateHash = true) {
     settingsBtn.style.display = sectionName === 'tasks' ? '' : 'none';
   }
   
+  // Уход из «Малых слотов» с активным слотом: тихо завершаем — время уже
+  // записано по выполненным шагам, активный шаг времени не получает.
+  if (prevSection === 'micro-slots' && sectionName !== 'micro-slots') {
+    abandonMicroSlotSilently();
+  }
+
   // Выход из режима ФЛОУ: снять класс и закрыть карточку без принудительного возврата в tasks
   if (isFlowSectionName(prevSection) && !isFlowSectionName(sectionName)) {
     document.body.classList.remove('flow-mode');
@@ -1455,6 +1547,8 @@ function switchSection(sectionName, updateHash = true) {
   if (ideasSection) ideasSection.style.display = 'none';
   const staleSection = document.getElementById('staleSection');
   if (staleSection) staleSection.style.display = 'none';
+  const analyticsSection = document.getElementById('analyticsSection');
+  if (analyticsSection) analyticsSection.style.display = 'none';
   const cookbooksSection = document.getElementById('cookbooksSection');
   if (cookbooksSection) cookbooksSection.style.display = 'none';
 
@@ -1555,6 +1649,13 @@ function switchSection(sectionName, updateHash = true) {
         renderStaleSection();
       }
       break;
+    case 'analytics':
+      if (analyticsSection) {
+        analyticsSection.style.display = 'block';
+        activateBurgerMenuItem('analytics');
+        renderAnalyticsSection();
+      }
+      break;
     case 'cookbooks':
       if (cookbooksSection) {
         cookbooksSection.style.display = 'block';
@@ -1609,6 +1710,7 @@ function getCurrentSectionName() {
     backlog: document.getElementById('backlogSection'),
     ideas: document.getElementById('ideasSection'),
     stale: document.getElementById('staleSection'),
+    analytics: document.getElementById('analyticsSection'),
     cookbooks: document.getElementById('cookbooksSection')
   };
   const visibleEntry = Object.entries(sections).find(([, element]) =>
@@ -1689,7 +1791,8 @@ function updatePageTitle(sectionName) {
     'waiting': 'Жду',
     'backlog': 'Бэклог',
     'ideas': 'Идеи',
-    'stale': 'Залежалось',
+    'stale': 'Ревью',
+    'analytics': 'Инсайты',
     'cookbooks': 'Cookbooks'
   };
   
@@ -1730,7 +1833,12 @@ async function renderActiveTasks() {
   const taskDisplayMode = settings.taskDisplayMode || 'all';
   
   // Фильтруем только активные задачи production-очереди.
-  let filtered = currentTasks.filter(task => isTaskExecutionActive(task));
+  // Активные ready-задачи + черновики (приглушённо, с бейджем «Черновик»),
+  // чтобы новая задача не «исчезала» из списка сразу после создания.
+  let filtered = currentTasks.filter(task =>
+    isTaskExecutionActive(task) ||
+    (!task.completed && isTaskInWorkflowStatus(task, 'active') && normalizeTaskStatus(task.status) === 'draft')
+  );
   
   logger.debug('renderActiveTasks:', {
     totalTasks: currentTasks.length,
@@ -1850,6 +1958,7 @@ async function renderActiveTasks() {
       todayTasksSection.style.display = 'none';
       todayTasksList.innerHTML = '';
     }
+    updateFocusCapacityBar([...sortedOverdueTasks, ...todayTasksToRender], settings);
 
     // Рендерим задачи "Позже"
     if (sortedLaterTasks.length > 0) {
@@ -1892,6 +2001,7 @@ function isTaskRunnableFromTasksPage(task) {
 function getMicroSlotTasksForCommandCenter() {
   return currentTasks
     .filter(task => isTaskExecutionActive(task))
+    .filter(isMicroSlotTaskAllowedByFutureFilter)
     .filter(task => {
       const action = getPrimaryNextAction(task);
       if (!action) return false;
@@ -1899,11 +2009,36 @@ function getMicroSlotTasksForCommandCenter() {
     });
 }
 
-function getUnrankedPriorityCount() {
-  const priorityPool = currentTasks.filter(task =>
+function getPriorityPool() {
+  return currentTasks.filter(task =>
     task && task.completed !== true && normalizeTaskStatus(task.status) === 'ready' && !isTaskBacklogLike(task)
   );
-  return priorityPool.filter(task => !Number.isFinite(task.priorityRank)).length;
+}
+
+function isPriorityRanked(task) {
+  return Number.isFinite(Number(task?.priorityRank)) && Number(task.priorityRank) > 0;
+}
+
+function estimatePriorityComparisonCount(rankedCount, unrankedCount) {
+  let orderedCount = Math.max(0, Math.floor(Number(rankedCount) || 0));
+  let comparisons = 0;
+  for (let i = 0; i < unrankedCount; i += 1) {
+    comparisons += orderedCount === 0 ? 0 : Math.ceil(Math.log2(orderedCount + 1));
+    orderedCount += 1;
+  }
+  return comparisons;
+}
+
+function getPriorityComparisonSummary() {
+  const priorityPool = getPriorityPool();
+  const rankedCount = priorityPool.filter(isPriorityRanked).length;
+  const unrankedCount = priorityPool.length - rankedCount;
+  const comparisonCount = estimatePriorityComparisonCount(rankedCount, unrankedCount);
+  return { priorityPool, rankedCount, unrankedCount, comparisonCount };
+}
+
+function getUnrankedPriorityCount() {
+  return getPriorityComparisonSummary().unrankedCount;
 }
 
 function createTasksCommandButton(item) {
@@ -1930,41 +2065,168 @@ function createTasksCommandButton(item) {
   count.textContent = String(item.count);
   button.appendChild(count);
 
-  const meta = document.createElement('span');
-  meta.className = 'tasks-command-meta';
-  meta.textContent = item.meta;
-  button.appendChild(meta);
+  if (item.meta) {
+    const meta = document.createElement('span');
+    meta.className = 'tasks-command-meta';
+    meta.textContent = item.meta;
+    button.appendChild(meta);
+  }
 
   return button;
+}
+
+// Влезает ли задача в окно времени (по ближайшему шагу; рутина — по оценке).
+function doesTaskFitWindow(task, windowMin) {
+  const action = getPrimaryNextAction(task);
+  if (action) {
+    const size = normalizeNextStepSizeForUi(action.size);
+    if (size === 'deep') return windowMin >= 60;
+    return size <= windowMin;
+  }
+  if (isRecurringRoutineTask(task)) {
+    const estimate = resolveTaskEstimateMinutes(task) || ROUTINE_DEFAULT_ESTIMATE_MIN;
+    return estimate <= windowMin;
+  }
+  return false;
+}
+
+function getRunnableTasksForWindow(windowMin) {
+  const tasks = currentTasks.filter(task => isTaskRunnableFromTasksPage(task) && doesTaskFitWindow(task, windowMin));
+  return windowMin <= 15 ? tasks.filter(isMicroSlotTaskAllowedByFutureFilter) : tasks;
+}
+
+// Первая задача для CTA «Начать»: порядок как в основных секциях.
+function getStartCandidateForWindow(windowMin) {
+  const runnable = getRunnableTasksForWindow(windowMin);
+  if (runnable.length === 0) return null;
+  const todayKey = getTodayKey();
+  const dueNow = runnable.filter(task => isTaskDueOrOverdue(task, todayKey));
+  const pool = dueNow.length > 0 ? dueNow : runnable;
+  return sortTasks(pool)[0] || null;
+}
+
+function formatStartWindowLabel(windowMin) {
+  return windowMin >= 120 ? '2ч+' : `${windowMin}м`;
+}
+
+function describeStartCandidate(task) {
+  if (!task) return null;
+  const action = getPrimaryNextAction(task);
+  const minutes = action
+    ? (normalizeNextStepSizeForUi(action.size) === 'deep' ? null : normalizeNextStepSizeForUi(action.size))
+    : (resolveTaskEstimateMinutes(task) || ROUTINE_DEFAULT_ESTIMATE_MIN);
+  const suffix = minutes ? `, ~${minutes}м` : '';
+  const name = String(task.text || '').length > 44 ? `${String(task.text).slice(0, 42)}…` : String(task.text || '');
+  return `«${name}»${suffix}`;
+}
+
+async function startWorkForWindow(windowMin) {
+  await applyFlowTimeWindow(windowMin, { persist: true, refreshFlow: false });
+  switchSection(windowMin <= 15 ? 'micro-slots' : 'flow');
+}
+
+function getWorkflowStaleCount() {
+  return currentTasks.filter(task => !task.completed && isWorkflowStaleTask(task)).length;
 }
 
 function renderTasksCommandCenter() {
   const root = document.getElementById('tasksCommandCenter');
   if (!root) return;
-  const runnableCount = currentTasks.filter(isTaskRunnableFromTasksPage).length;
-  const movementCount = getMovementItems().length;
-  const microCount = getMicroSlotTasksForCommandCenter().length;
+  root.innerHTML = '';
+
+  // Зона 1: «Сколько у тебя времени?» + CTA
+  const timeBlock = document.createElement('div');
+  timeBlock.className = 'start-time-block';
+  const timeLabel = document.createElement('p');
+  timeLabel.className = 'start-time-label';
+  timeLabel.textContent = 'Сколько у тебя времени?';
+  timeBlock.appendChild(timeLabel);
+
+  const chipRow = document.createElement('div');
+  chipRow.className = 'start-time-chips';
+  FLOW_TIME_WINDOW_OPTIONS.forEach(minutes => {
+    const count = getRunnableTasksForWindow(minutes).length;
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = `start-time-chip ${minutes === activeFlowTimeWindowMin ? 'active' : ''}`.trim();
+    const value = document.createElement('span');
+    value.className = 'start-time-chip-value';
+    value.textContent = formatStartWindowLabel(minutes);
+    const countEl = document.createElement('span');
+    countEl.className = 'start-time-chip-count';
+    countEl.textContent = count === 0 ? 'нет задач' : `${count} ${count === 1 ? 'задача' : count < 5 ? 'задачи' : 'задач'}`;
+    chip.appendChild(value);
+    chip.appendChild(countEl);
+    chip.addEventListener('click', async () => {
+      await applyFlowTimeWindow(minutes, { persist: true, refreshFlow: false });
+      renderTasksCommandCenter();
+    });
+    chipRow.appendChild(chip);
+  });
+  timeBlock.appendChild(chipRow);
+
+  const candidate = getStartCandidateForWindow(activeFlowTimeWindowMin);
+  const startBtn = document.createElement('button');
+  startBtn.type = 'button';
+  startBtn.className = 'start-cta-btn';
+  startBtn.disabled = !candidate;
+  startBtn.textContent = candidate
+    ? `Начать — ${describeStartCandidate(candidate)}`
+    : `Нет задач под ${formatStartWindowLabel(activeFlowTimeWindowMin)} — разбери карточки или смени окно`;
+  startBtn.addEventListener('click', async () => {
+    if (!candidate) return;
+    await startWorkForWindow(activeFlowTimeWindowMin);
+  });
+  timeBlock.appendChild(startBtn);
+
+  const hint = document.createElement('p');
+  hint.className = 'start-cta-hint';
+  hint.textContent = '5–15м откроет список коротких шагов, 30м+ — фокус-карточку';
+  timeBlock.appendChild(hint);
+  root.appendChild(timeBlock);
+
+  // Зона 2: «Требует решения»
   const todayKey = getTodayKey();
+  const movementCount = getMovementItems().length;
+  const waitingTotal = currentTasks.filter(task => !task.completed && isTaskInWorkflowStatus(task, 'waiting')).length;
   const waitingDueCount = currentTasks.filter(task =>
     !task.completed &&
     isTaskInWorkflowStatus(task, 'waiting') &&
     task.waitingUntil &&
     task.waitingUntil <= todayKey
   ).length;
-  const unrankedCount = getUnrankedPriorityCount();
+  const prioritySummary = getPriorityComparisonSummary();
+  const staleCount = getWorkflowStaleCount();
 
   const items = [
-    { label: 'Делать', count: runnableCount, meta: 'ФЛОУ', section: 'flow', primary: true, disabled: runnableCount === 0 },
-    { label: 'Разобрать', count: movementCount, meta: 'Движение', section: 'movement', disabled: movementCount === 0 },
-    { label: 'Короткие', count: microCount, meta: '5-15м', section: 'micro-slots', disabled: microCount === 0 },
-    { label: 'Жду', count: waitingDueCount, meta: 'проверить', section: 'waiting', disabled: waitingDueCount === 0 }
-  ];
-  if (unrankedCount > 0) {
-    items.push({ label: 'Что важнее', count: unrankedCount, meta: 'приоритет', section: 'prioritization' });
-  }
+    { label: 'Разобрать', count: movementCount, section: 'movement', disabled: movementCount === 0 },
+    {
+      label: 'Жду',
+      count: waitingDueCount,
+      meta: waitingTotal > 0 ? `из ${waitingTotal}` : '',
+      section: 'waiting',
+      disabled: waitingTotal === 0
+    },
+    {
+      label: 'Что важнее',
+      count: prioritySummary.comparisonCount,
+      meta: prioritySummary.unrankedCount > 0 ? `${prioritySummary.unrankedCount} задач` : '',
+      section: 'prioritization',
+      disabled: prioritySummary.comparisonCount === 0
+    },
+    { label: 'Ревью', count: staleCount, section: 'stale', disabled: staleCount === 0 }
+  ].filter(item => !item.disabled);
 
-  root.innerHTML = '';
-  items.forEach(item => root.appendChild(createTasksCommandButton(item)));
+  if (items.some(item => !item.disabled)) {
+    const decisionLabel = document.createElement('p');
+    decisionLabel.className = 'start-decision-label';
+    decisionLabel.textContent = 'Требует решения';
+    root.appendChild(decisionLabel);
+    const decisionRow = document.createElement('div');
+    decisionRow.className = 'start-decision-row';
+    items.forEach(item => decisionRow.appendChild(createTasksCommandButton(item)));
+    root.appendChild(decisionRow);
+  }
 }
 
 function renderCurrentWorkflowSection() {
@@ -1991,7 +2253,417 @@ function renderCurrentWorkflowSection() {
     case 'stale':
       renderStaleSection();
       break;
+    case 'analytics':
+      renderAnalyticsSection();
+      break;
   }
+}
+
+function formatAnalyticsDuration(seconds) {
+  const totalSeconds = Math.max(0, Math.floor(Number(seconds) || 0));
+  if (totalSeconds === 0) return '0м';
+  const totalMinutes = Math.max(1, Math.round(totalSeconds / 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours > 0 && minutes > 0) return `${hours}ч ${minutes}м`;
+  if (hours > 0) return `${hours}ч`;
+  return `${minutes}м`;
+}
+
+function formatAnalyticsPeriodLabel() {
+  if (analyticsPeriodDays === null) return 'Все время';
+  return `${analyticsPeriodDays} дней`;
+}
+
+function renderAnalyticsPeriodTabs() {
+  document.querySelectorAll('.analytics-period-tab').forEach((button) => {
+    const value = button.getAttribute('data-period-days');
+    const isActive = (analyticsPeriodDays === null && value === 'all')
+      || (analyticsPeriodDays !== null && Number(value) === analyticsPeriodDays);
+    button.classList.toggle('active', isActive);
+    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+  });
+}
+
+function createAnalyticsMetric(label, value, hint) {
+  const metric = document.createElement('div');
+  metric.className = 'analytics-metric';
+
+  const valueEl = document.createElement('div');
+  valueEl.className = 'analytics-metric-value';
+  valueEl.textContent = String(value);
+  metric.appendChild(valueEl);
+
+  const labelEl = document.createElement('div');
+  labelEl.className = 'analytics-metric-label';
+  labelEl.textContent = label;
+  metric.appendChild(labelEl);
+
+  if (hint) {
+    const hintEl = document.createElement('div');
+    hintEl.className = 'analytics-metric-hint';
+    hintEl.textContent = hint;
+    metric.appendChild(hintEl);
+  }
+
+  return metric;
+}
+
+function createAnalyticsCard(title, options = {}) {
+  const card = document.createElement('section');
+  card.className = `analytics-card${options.wide ? ' wide' : ''}`;
+
+  const header = document.createElement('div');
+  header.className = 'analytics-card-header';
+
+  const titleEl = document.createElement('h3');
+  titleEl.textContent = title;
+  header.appendChild(titleEl);
+
+  if (options.meta) {
+    const meta = document.createElement('span');
+    meta.className = 'analytics-card-meta';
+    meta.textContent = options.meta;
+    header.appendChild(meta);
+  }
+
+  card.appendChild(header);
+  return card;
+}
+
+function createAnalyticsOpenButton(taskId) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'workflow-action-btn secondary analytics-open-btn';
+  button.textContent = 'Открыть';
+  button.addEventListener('click', async () => {
+    if (typeof openWorkflowTask === 'function') {
+      await openWorkflowTask(taskId);
+      return;
+    }
+    if (typeof window.openTaskCard === 'function') {
+      await window.openTaskCard(taskId);
+    }
+  });
+  return button;
+}
+
+function createAnalyticsEmpty(text) {
+  const empty = document.createElement('p');
+  empty.className = 'analytics-empty';
+  empty.textContent = text;
+  return empty;
+}
+
+function appendAnalyticsTaskRow(list, item, options = {}) {
+  const row = document.createElement('div');
+  row.className = 'analytics-task-row';
+
+  const body = document.createElement('div');
+  body.className = 'analytics-task-body';
+
+  const title = document.createElement('div');
+  title.className = 'analytics-task-title';
+  title.textContent = item.title || 'Без названия';
+  body.appendChild(title);
+
+  if (options.meta) {
+    const meta = document.createElement('div');
+    meta.className = 'analytics-task-meta';
+    meta.textContent = options.meta;
+    body.appendChild(meta);
+  }
+
+  if (Array.isArray(item.reasons) && item.reasons.length > 0) {
+    const reasons = document.createElement('div');
+    reasons.className = 'analytics-reasons';
+    item.reasons.forEach((reason) => {
+      const chip = document.createElement('span');
+      chip.className = 'analytics-reason-chip';
+      chip.textContent = reason;
+      reasons.appendChild(chip);
+    });
+    body.appendChild(reasons);
+  }
+
+  if (item.suggestedAction) {
+    const suggestion = document.createElement('div');
+    suggestion.className = 'analytics-suggestion';
+    suggestion.textContent = item.suggestedAction;
+    body.appendChild(suggestion);
+  }
+
+  row.appendChild(body);
+  row.appendChild(createAnalyticsOpenButton(item.id));
+  list.appendChild(row);
+}
+
+function createAnalyticsBarRow(label, value, maxValue, meta) {
+  const row = document.createElement('div');
+  row.className = 'analytics-bar-row';
+
+  const head = document.createElement('div');
+  head.className = 'analytics-bar-head';
+  const labelEl = document.createElement('span');
+  labelEl.textContent = label;
+  const valueEl = document.createElement('span');
+  valueEl.textContent = meta || String(value);
+  head.appendChild(labelEl);
+  head.appendChild(valueEl);
+  row.appendChild(head);
+
+  const bar = document.createElement('div');
+  bar.className = 'analytics-bar';
+  const fill = document.createElement('div');
+  fill.className = 'analytics-bar-fill';
+  const width = maxValue > 0 ? Math.max(4, Math.min(100, Math.round((value / maxValue) * 100))) : 0;
+  fill.style.width = `${width}%`;
+  bar.appendChild(fill);
+  row.appendChild(bar);
+
+  return row;
+}
+
+function renderAnalyticsProblemTasks(card, problemTasks) {
+  if (!problemTasks.length) {
+    card.appendChild(createAnalyticsEmpty('Нет явных проблемных задач. Проверим еще дедлайны ниже.'));
+    return;
+  }
+  const list = document.createElement('div');
+  list.className = 'analytics-risk-list';
+  problemTasks.forEach((item) => {
+    const metaParts = [];
+    if (item.staleDays > 0) metaParts.push(`без обновления ${item.staleDays} дн.`);
+    if (item.percent !== null) metaParts.push(`факт ${item.percent}%`);
+    appendAnalyticsTaskRow(list, item, { meta: metaParts.join(' · ') });
+  });
+  card.appendChild(list);
+}
+
+function renderAnalyticsPlanFact(card, planFact) {
+  const accuracy = planFact.accuracyPercent === null ? 'нет данных' : `${planFact.accuracyPercent}%`;
+  const summary = document.createElement('p');
+  summary.className = 'analytics-card-note';
+  summary.textContent = `Общая точность по задачам с оценкой: ${accuracy}. Сильные отклонения показываем от 50% вниз или от 150% вверх.`;
+  card.appendChild(summary);
+
+  if (!planFact.items.length) {
+    card.appendChild(createAnalyticsEmpty('Сильных отклонений план/факт нет или по задачам пока мало оценок.'));
+    return;
+  }
+
+  const list = document.createElement('div');
+  list.className = 'analytics-bar-list';
+  const maxPercent = Math.max(...planFact.items.map(item => Math.max(100, item.percent || 0)));
+  planFact.items.forEach((item) => {
+    const row = document.createElement('div');
+    row.className = 'analytics-plan-row';
+    const title = document.createElement('div');
+    title.className = 'analytics-task-title';
+    title.textContent = item.title || 'Без названия';
+    row.appendChild(title);
+    row.appendChild(createAnalyticsBarRow(
+      item.direction === 'over' ? 'Перерасход' : 'Недобор факта',
+      item.percent || 0,
+      maxPercent,
+      `${item.percent}% · план ${item.planMinutes}м · факт ${formatAnalyticsDuration(item.factSeconds)}`
+    ));
+    row.appendChild(createAnalyticsOpenButton(item.id));
+    list.appendChild(row);
+  });
+  card.appendChild(list);
+}
+
+function appendAnalyticsDeadlineGroup(root, title, items, emptyText, getMeta) {
+  const group = document.createElement('div');
+  group.className = 'analytics-deadline-group';
+
+  const groupTitle = document.createElement('h4');
+  groupTitle.textContent = `${title}: ${items.length}`;
+  group.appendChild(groupTitle);
+
+  if (!items.length) {
+    group.appendChild(createAnalyticsEmpty(emptyText));
+    root.appendChild(group);
+    return;
+  }
+
+  const list = document.createElement('div');
+  list.className = 'analytics-compact-list';
+  items.slice(0, 6).forEach((item) => {
+    appendAnalyticsTaskRow(list, item, { meta: getMeta(item) });
+  });
+  group.appendChild(list);
+  root.appendChild(group);
+}
+
+function renderAnalyticsDeadlines(card, deadlines) {
+  const grid = document.createElement('div');
+  grid.className = 'analytics-deadline-grid';
+  appendAnalyticsDeadlineGroup(
+    grid,
+    'Просрочено',
+    deadlines.overdue || [],
+    'Просроченных задач нет.',
+    item => item.deadline ? formatDeadlineKeyForHumans(item.deadline) : ''
+  );
+  appendAnalyticsDeadlineGroup(
+    grid,
+    'Переносы',
+    deadlines.deadlineChurn || [],
+    'Нет задач с 3+ переносами дедлайна.',
+    item => `${item.count || 0} переносов`
+  );
+  appendAnalyticsDeadlineGroup(
+    grid,
+    'Ожидание',
+    deadlines.waitingOverdue || [],
+    'Нет просроченных ожиданий.',
+    item => item.waitingUntil ? `жду до ${formatDeadlineKeyForHumans(item.waitingUntil)}` : 'ожидание без даты'
+  );
+  card.appendChild(grid);
+}
+
+function renderAnalyticsSteps(card, steps) {
+  const completedNote = document.createElement('p');
+  completedNote.className = 'analytics-card-note';
+  completedNote.textContent = `Закрыто шагов: ${steps.completed}. Учтенное время шагов: ${formatAnalyticsDuration(steps.completedSeconds)}.`;
+  card.appendChild(completedNote);
+
+  const bars = document.createElement('div');
+  bars.className = 'analytics-steps-grid';
+  const sizeValues = Object.entries(steps.bySize || {});
+  const kindValues = Object.entries(steps.byKind || {});
+  const maxSize = Math.max(0, ...sizeValues.map(([, value]) => value));
+  const maxKind = Math.max(0, ...kindValues.map(([, value]) => value));
+
+  const sizeBox = document.createElement('div');
+  sizeBox.className = 'analytics-bar-list';
+  const sizeTitle = document.createElement('h4');
+  sizeTitle.textContent = 'По размеру';
+  sizeBox.appendChild(sizeTitle);
+  sizeValues.forEach(([size, value]) => {
+    sizeBox.appendChild(createAnalyticsBarRow(size === 'deep' ? 'Deep' : `${size}м`, value, maxSize, `${value}`));
+  });
+  bars.appendChild(sizeBox);
+
+  const kindLabels = {
+    do: 'Сделать',
+    ping: 'Пинг',
+    check: 'Проверить',
+    write: 'Написать',
+    think: 'Подумать',
+    delegate: 'Делегировать'
+  };
+  const kindBox = document.createElement('div');
+  kindBox.className = 'analytics-bar-list';
+  const kindTitle = document.createElement('h4');
+  kindTitle.textContent = 'По типу';
+  kindBox.appendChild(kindTitle);
+  kindValues.forEach(([kind, value]) => {
+    kindBox.appendChild(createAnalyticsBarRow(kindLabels[kind] || kind, value, maxKind, `${value}`));
+  });
+  bars.appendChild(kindBox);
+  card.appendChild(bars);
+
+  const withoutStep = steps.tasksWithoutNextAction || [];
+  const noStepTitle = document.createElement('h4');
+  noStepTitle.className = 'analytics-subhead';
+  noStepTitle.textContent = `Активные задачи без следующего шага: ${withoutStep.length}`;
+  card.appendChild(noStepTitle);
+  if (!withoutStep.length) {
+    card.appendChild(createAnalyticsEmpty('Все активные задачи имеют следующий шаг.'));
+    return;
+  }
+  const list = document.createElement('div');
+  list.className = 'analytics-compact-list';
+  withoutStep.slice(0, 8).forEach((item) => {
+    appendAnalyticsTaskRow(list, { ...item, suggestedAction: 'Добавить следующий шаг' });
+  });
+  card.appendChild(list);
+}
+
+function renderAnalyticsModes(card, modes) {
+  const rows = [
+    { label: 'Малые слоты', value: modes.micro?.seconds || 0, sessions: modes.micro?.sessions || 0 },
+    { label: 'Помодоро', value: modes.pomodoro?.seconds || 0, sessions: modes.pomodoro?.sessions || 0 },
+    { label: 'Другое фокус-время', value: modes.other?.seconds || 0, sessions: modes.other?.sessions || 0 }
+  ];
+  const maxSeconds = Math.max(0, ...rows.map(row => row.value));
+  const list = document.createElement('div');
+  list.className = 'analytics-bar-list';
+  rows.forEach((row) => {
+    list.appendChild(createAnalyticsBarRow(
+      row.label,
+      row.value,
+      maxSeconds,
+      `${formatAnalyticsDuration(row.value)} · ${row.sessions} сесс.`
+    ));
+  });
+  card.appendChild(list);
+}
+
+function renderAnalyticsSection() {
+  renderAnalyticsPeriodTabs();
+  const root = document.getElementById('analyticsContent');
+  if (!root) return;
+  root.innerHTML = '';
+
+  if (typeof window.createAnalyticsReport !== 'function') {
+    root.appendChild(createAnalyticsEmpty('Модуль аналитики не загрузился.'));
+    return;
+  }
+
+  const report = window.createAnalyticsReport(currentTasks, { periodDays: analyticsPeriodDays });
+  const summary = report.summary || {};
+
+  const diagnosis = document.createElement('section');
+  diagnosis.className = 'analytics-diagnosis';
+  const diagnosisHeader = document.createElement('div');
+  diagnosisHeader.className = 'analytics-section-head';
+  const diagnosisTitle = document.createElement('h3');
+  diagnosisTitle.textContent = 'Диагноз';
+  const diagnosisMeta = document.createElement('span');
+  diagnosisMeta.textContent = formatAnalyticsPeriodLabel();
+  diagnosisHeader.appendChild(diagnosisTitle);
+  diagnosisHeader.appendChild(diagnosisMeta);
+  diagnosis.appendChild(diagnosisHeader);
+
+  const metricGrid = document.createElement('div');
+  metricGrid.className = 'analytics-metric-grid';
+  metricGrid.appendChild(createAnalyticsMetric('Закрыто задач', summary.completedTasks || 0, formatAnalyticsPeriodLabel()));
+  metricGrid.appendChild(createAnalyticsMetric('Закрыто шагов', summary.completedSteps || 0, formatAnalyticsPeriodLabel()));
+  metricGrid.appendChild(createAnalyticsMetric('Фокус', formatAnalyticsDuration(summary.focusSeconds), 'помодоро и прочее'));
+  metricGrid.appendChild(createAnalyticsMetric('Малые слоты', formatAnalyticsDuration(summary.microSeconds), 'короткие шаги'));
+  metricGrid.appendChild(createAnalyticsMetric('Активных ready', summary.activeReadyCount || 0, 'готовы к работе'));
+  metricGrid.appendChild(createAnalyticsMetric('Просрочено', summary.overdueCount || 0, 'нужно решение'));
+  diagnosis.appendChild(metricGrid);
+  root.appendChild(diagnosis);
+
+  const grid = document.createElement('div');
+  grid.className = 'analytics-grid';
+
+  const problemCard = createAnalyticsCard('Самые проблемные', { wide: true, meta: `${report.problemTasks.length}` });
+  renderAnalyticsProblemTasks(problemCard, report.problemTasks || []);
+  grid.appendChild(problemCard);
+
+  const planFactCard = createAnalyticsCard('План/факт', { wide: true });
+  renderAnalyticsPlanFact(planFactCard, report.planFact || { items: [], accuracyPercent: null });
+  grid.appendChild(planFactCard);
+
+  const deadlineCard = createAnalyticsCard('Дедлайны и ожидания', { wide: true });
+  renderAnalyticsDeadlines(deadlineCard, report.deadlines || {});
+  grid.appendChild(deadlineCard);
+
+  const stepsCard = createAnalyticsCard('Шаги', { wide: true });
+  renderAnalyticsSteps(stepsCard, report.steps || { completed: 0, completedSeconds: 0, bySize: {}, byKind: {}, tasksWithoutNextAction: [] });
+  grid.appendChild(stepsCard);
+
+  const modesCard = createAnalyticsCard('Время по режимам', { wide: true });
+  renderAnalyticsModes(modesCard, report.modes || {});
+  grid.appendChild(modesCard);
+
+  root.appendChild(grid);
 }
 
 function setWorkflowStats(elementId, parts) {
@@ -2004,6 +2676,12 @@ function setWorkflowStats(elementId, parts) {
     chip.textContent = part;
     element.appendChild(chip);
   });
+}
+
+function returnToTasksIfCurrentSectionIsEmpty(sectionName) {
+  if (getCurrentSectionName() !== sectionName) return false;
+  switchSection('tasks');
+  return true;
 }
 
 function setWorkflowListState(listId, emptyId, tasks, mode) {
@@ -2063,18 +2741,24 @@ const MOVEMENT_REASON_META = {
     label: 'давно без движения',
     severity: 'neutral',
     action: 'Реши судьбу: сделать сейчас, описать следующий шаг, отправить в бэклог или убить.'
+  },
+  deadline_churn: {
+    label: 'дедлайн переносился 3+ раз',
+    severity: 'warning',
+    action: 'Дедлайн реальный? Поставь честную дату, убери дату совсем или отправь задачу в бэклог.'
   }
 };
 
 const MOVEMENT_REASON_SORT = {
   waiting_due: 0,
   deadline_blocked: 1,
-  draft: 2,
-  missing_next_action: 3,
-  no_estimate: 4,
-  too_large: 5,
-  skipped: 6,
-  stale: 7
+  deadline_churn: 2,
+  skipped: 3,
+  draft: 4,
+  missing_next_action: 5,
+  no_estimate: 6,
+  too_large: 7,
+  stale: 8
 };
 
 function getTaskDeadlineKey(task) {
@@ -2087,6 +2771,12 @@ function isTaskDueOrOverdue(task, todayKey) {
 }
 
 function isTaskTooLargeForMovement(task) {
+  // Крупная задача с готовым коротким первым шагом (≤60м) — декомпозиция
+  // уже сделана на уровне next action, разбирать её не нужно.
+  const action = getPrimaryNextAction(task);
+  if (action && normalizeNextStepSizeForUi(action.size) !== 'deep') {
+    return false;
+  }
   const mode = normalizeEstimateModeForBadge(task?.estimateMode);
   const estimate = resolveTaskEstimateMinutes(task);
   const range = task?.timeEstimateMinRange && typeof task.timeEstimateMinRange === 'object'
@@ -2120,11 +2810,14 @@ function getMovementReasonKeys(task, todayKey) {
   const tooLarge = isTaskTooLargeForMovement(task);
   const skipped = Math.floor(Number(task.flowSkipCount) || 0) >= 2;
 
+  const deadlineChurn = Math.floor(Number(task.deadlineMoveCount) || 0) >= 3;
+
   if (isDraft) reasons.push('draft');
   if (missingNextAction) reasons.push('missing_next_action');
   if (taskNeedsEstimateForMovement(task)) reasons.push('no_estimate');
   if (tooLarge) reasons.push('too_large');
   if (skipped) reasons.push('skipped');
+  if (deadlineChurn) reasons.push('deadline_churn');
 
   const hasBlocker = reasons.length > 0;
   const staleWithBlocker = getTaskStalenessDays(task) >= 14 && hasBlocker;
@@ -2136,10 +2829,8 @@ function getMovementReasonKeys(task, todayKey) {
     reasons.unshift('deadline_blocked');
   }
 
-  if (!deadlineBlocked && !staleWithBlocker && !skipped) {
-    return [];
-  }
-
+  // «Разобрать» объединяет давление (дедлайн/ожидание/пролистано) и подготовку
+  // (черновик, нет шага/оценки, крупно): любой блокер выводит карточку в разбор.
   return [...new Set(reasons)];
 }
 
@@ -2249,6 +2940,7 @@ function renderMovementSection() {
   if (!list) return;
   list.innerHTML = '';
   if (!items.length) {
+    if (returnToTasksIfCurrentSectionIsEmpty('movement')) return;
     list.style.display = 'none';
     if (emptyState) emptyState.style.display = 'block';
     return;
@@ -2306,6 +2998,11 @@ function createMovementTaskCard(item) {
     card.appendChild(createWaitingActionRow(task));
   } else if (item.reasons.includes('missing_next_action') || item.reasons.includes('draft') || item.reasons.includes('too_large')) {
     card.appendChild(createQuickNextActionRow(task, { requireMetadata: true }));
+    card.appendChild(createTaskIsStepRow(task));
+  }
+
+  if (item.reasons.includes('deadline_churn')) {
+    card.appendChild(createDeadlineChurnRow(task));
   }
 
   card.appendChild(createMovementActionBar(task, item));
@@ -2504,24 +3201,567 @@ function renderTriageSection() {
   list.appendChild(createTriageReviewShell(candidates, activeIndex));
 }
 
-function renderMicroSlotsSection() {
-  const tasks = currentTasks
+// ===== Спринт коротких: таймер принадлежит слоту, время — шагу =====
+/** @type {{windowMin:number, endsAt:number, timerId:any, running:boolean, expired:boolean, extendedMin:number, completedSteps:Array<{taskId:string,taskText:string,stepId:string,text:string,sec:number}>, queueStepIds:string[]}|null} */
+let microSlot = null;
+/** @type {{taskId:string, stepId:string, activatedAt:number, logText:string}|null} */
+let microActiveStep = null;
+/** @type {Set<string>} Пропущенные в текущем слоте шаги (runtime, уходят в конец очереди). */
+let microSkippedStepIds = new Set();
+let microSlotBellAudio = null;
+let microSlotAmbienceAudio = null;
+const MICRO_SLOT_SOUND_STORAGE_KEY = 'swiper_micro_slot_sound_enabled';
+
+function isMicroSlotSoundEnabled() {
+  try {
+    return localStorage.getItem(MICRO_SLOT_SOUND_STORAGE_KEY) !== '0';
+  } catch (error) {
+    return true;
+  }
+}
+
+function setMicroSlotSoundEnabled(enabled) {
+  try {
+    localStorage.setItem(MICRO_SLOT_SOUND_STORAGE_KEY, enabled ? '1' : '0');
+  } catch (error) {
+    // Настройка звука не критична для работы слота.
+  }
+  if (enabled && isMicroSlotRunning()) {
+    playMicroSlotAmbience();
+  } else {
+    stopMicroSlotAmbience();
+  }
+  updateMicroSlotSoundToggle();
+}
+
+function updateMicroSlotSoundToggle() {
+  const button = document.getElementById('microSlotSoundToggleBtn');
+  if (!button) return;
+  const enabled = isMicroSlotSoundEnabled();
+  button.textContent = enabled ? 'Звук вкл' : 'Звук выкл';
+  button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+  button.title = enabled ? 'Выключить звуки таймера малого слота' : 'Включить звуки таймера малого слота';
+}
+
+function playMicroSlotAmbience() {
+  if (!isMicroSlotSoundEnabled()) return;
+  try {
+    if (!microSlotAmbienceAudio) {
+      microSlotAmbienceAudio = new Audio(chrome.runtime.getURL('assets/audio/pomodoro-ambience.mp3'));
+      microSlotAmbienceAudio.loop = true;
+      microSlotAmbienceAudio.volume = 0.25;
+    }
+    const p = microSlotAmbienceAudio.play();
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+  } catch (error) {
+    // Фоновый звук опционален.
+  }
+}
+
+function stopMicroSlotAmbience() {
+  if (!microSlotAmbienceAudio) return;
+  try {
+    microSlotAmbienceAudio.pause();
+    microSlotAmbienceAudio.currentTime = 0;
+  } catch (error) {
+    // Фоновый звук опционален.
+  }
+}
+
+function playMicroSlotBell() {
+  if (!isMicroSlotSoundEnabled()) return;
+  try {
+    if (!microSlotBellAudio) {
+      microSlotBellAudio = new Audio(chrome.runtime.getURL('assets/audio/bell.wav'));
+    }
+    microSlotBellAudio.currentTime = 0;
+    const p = microSlotBellAudio.play();
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+  } catch (error) {
+    // Звук опционален
+  }
+}
+
+function getMicroSlotWindowMin() {
+  return activeFlowTimeWindowMin <= 15 ? activeFlowTimeWindowMin : 15;
+}
+
+function isMicroSlotRunning() {
+  return !!microSlot && microSlot.running === true;
+}
+
+function getMicroSlotCapSeconds() {
+  if (!microSlot) return 3600;
+  return (microSlot.windowMin + microSlot.extendedMin) * 60;
+}
+
+function updateMicroSlotFutureToggleUi() {
+  const toggle = document.getElementById('microSlotFutureToggle');
+  if (!toggle) return;
+  toggle.checked = showFutureMicroSlotSteps;
+}
+
+function isMicroSlotTaskAllowedByFutureFilter(task) {
+  if (showFutureMicroSlotSteps) return true;
+  const deadlineKey = getTaskDeadlineKey(task);
+  return !!deadlineKey && deadlineKey <= getTodayKey();
+}
+
+function getMicroSlotDeadlineBucket(task) {
+  if (!task?.deadline) return { bucket: 2, time: Number.POSITIVE_INFINITY };
+  const deadlineDate = parseDeadlineDate(task.deadline);
+  if (!deadlineDate || Number.isNaN(deadlineDate.getTime())) {
+    return { bucket: 2, time: Number.POSITIVE_INFINITY };
+  }
+  deadlineDate.setHours(0, 0, 0, 0);
+  const todayDate = parseDeadlineDate(getTodayKey()) || new Date();
+  todayDate.setHours(0, 0, 0, 0);
+  const time = deadlineDate.getTime();
+  if (time < todayDate.getTime()) return { bucket: 0, time };
+  if (time === todayDate.getTime()) return { bucket: 1, time };
+  return { bucket: 3, time };
+}
+
+function getSortedMicroSlotItems() {
+  const windowMin = getMicroSlotWindowMin();
+  return currentTasks
     .filter(task => isTaskExecutionActive(task))
+    .filter(isMicroSlotTaskAllowedByFutureFilter)
     .map(task => ({ task, action: getPrimaryNextAction(task) }))
-    .filter(item => item.action && [5, 15].includes(normalizeNextStepSizeForUi(item.action.size)))
+    .filter(item => {
+      if (!item.action) return false;
+      const size = normalizeNextStepSizeForUi(item.action.size);
+      return [5, 15].includes(size) && size <= windowMin;
+    })
     .sort((a, b) => {
+      const deadlineA = getMicroSlotDeadlineBucket(a.task);
+      const deadlineB = getMicroSlotDeadlineBucket(b.task);
+      if (deadlineA.bucket !== deadlineB.bucket) return deadlineA.bucket - deadlineB.bucket;
       const sizeA = normalizeNextStepSizeForUi(a.action.size);
       const sizeB = normalizeNextStepSizeForUi(b.action.size);
       if (sizeA !== sizeB) return sizeA - sizeB;
+      if (deadlineA.time !== deadlineB.time) return deadlineA.time - deadlineB.time;
       return sortTasks([a.task, b.task])[0].id === a.task.id ? -1 : 1;
-    })
-    .map(item => item.task);
+    });
+}
+
+function applyMicroSlotQueueOrder(items) {
+  if (!microSlot || !Array.isArray(microSlot.queueStepIds)) return items;
+  const byStepId = new Map(items.map(item => [item.action.id, item]));
+  const ordered = [];
+  microSlot.queueStepIds.forEach(stepId => {
+    const item = byStepId.get(stepId);
+    if (!item) return;
+    ordered.push(item);
+    byStepId.delete(stepId);
+  });
+  const appended = [...byStepId.values()];
+  if (appended.length > 0) {
+    microSlot.queueStepIds.push(...appended.map(item => item.action.id));
+  }
+  return [...ordered, ...appended];
+}
+
+function moveMicroStepToQueueEnd(stepId) {
+  if (!microSlot || !Array.isArray(microSlot.queueStepIds) || !stepId) return;
+  microSlot.queueStepIds = microSlot.queueStepIds.filter(id => id !== stepId);
+  microSlot.queueStepIds.push(stepId);
+}
+
+function formatMmSs(totalSeconds) {
+  const safe = Math.max(0, Math.floor(totalSeconds));
+  const mm = Math.floor(safe / 60);
+  const ss = safe % 60;
+  return `${mm}:${String(ss).padStart(2, '0')}`;
+}
+
+function startMicroSlot() {
+  const windowMin = getMicroSlotWindowMin();
+  const queueStepIds = getSortedMicroSlotItems().map(item => item.action.id);
+  microSlot = {
+    windowMin,
+    endsAt: Date.now() + windowMin * 60000,
+    timerId: setInterval(tickMicroSlot, 1000),
+    running: true,
+    expired: false,
+    extendedMin: 0,
+    completedSteps: [],
+    queueStepIds
+  };
+  microActiveStep = null;
+  microSkippedStepIds = new Set();
+  hideMicroSlotSummary();
+  playMicroSlotAmbience();
+  updateMicroSlotSoundToggle();
+  renderMicroSlotsSection();
+}
+
+function tickMicroSlot() {
+  if (!isMicroSlotRunning()) return;
+  if (Date.now() >= microSlot.endsAt) {
+    expireMicroSlot();
+    return;
+  }
+  updateMicroSlotBar();
+  updateMicroActiveStopwatch();
+}
+
+function expireMicroSlot() {
+  if (!microSlot) return;
+  clearInterval(microSlot.timerId);
+  microSlot.timerId = null;
+  microSlot.running = false;
+  microSlot.expired = true;
+  stopMicroSlotAmbience();
+  playMicroSlotBell();
+  showMicroSlotSummary({ allowExtend: true });
+  updateMicroSlotBar();
+}
+
+function stopMicroSlotManually() {
+  if (!microSlot) return;
+  clearInterval(microSlot.timerId);
+  microSlot.timerId = null;
+  microSlot.running = false;
+  stopMicroSlotAmbience();
+  showMicroSlotSummary({ allowExtend: false });
+  updateMicroSlotBar();
+}
+
+function extendMicroSlot() {
+  if (!microSlot) return;
+  microSlot.extendedMin += 5;
+  microSlot.endsAt = Date.now() + 5 * 60000;
+  microSlot.running = true;
+  microSlot.expired = false;
+  microSlot.timerId = setInterval(tickMicroSlot, 1000);
+  hideMicroSlotSummary();
+  playMicroSlotAmbience();
+  renderMicroSlotsSection();
+}
+
+function finishMicroSlot() {
+  if (microSlot && microSlot.timerId) clearInterval(microSlot.timerId);
+  stopMicroSlotAmbience();
+  microSlot = null;
+  microActiveStep = null;
+  microSkippedStepIds = new Set();
+  hideMicroSlotSummary();
+  renderMicroSlotsSection();
+}
+
+// Тихое завершение при уходе из раздела: время уже записано по шагам,
+// незавершённый активный шаг просто не получает времени.
+function abandonMicroSlotSilently() {
+  if (!microSlot) return;
+  if (microSlot.timerId) clearInterval(microSlot.timerId);
+  stopMicroSlotAmbience();
+  microSlot = null;
+  microActiveStep = null;
+  microSkippedStepIds = new Set();
+  hideMicroSlotSummary();
+}
+
+function updateMicroSlotBar() {
+  const timeEl = document.getElementById('microSlotTime');
+  const progressEl = document.getElementById('microSlotProgress');
+  const toggleBtn = document.getElementById('microSlotToggleBtn');
+  const bar = document.getElementById('microSlotBar');
+  if (!timeEl || !toggleBtn || !bar) return;
+  updateMicroSlotSoundToggle();
+  if (microSlot) {
+    const remaining = Math.max(0, Math.floor((microSlot.endsAt - Date.now()) / 1000));
+    const doneSec = microSlot.completedSteps.reduce((sum, s) => sum + s.sec, 0);
+    timeEl.textContent = microSlot.running ? `⏱ ${formatMmSs(remaining)}` : '⏱ стоп';
+    if (progressEl) {
+      progressEl.textContent = `сделано ${microSlot.completedSteps.length} · ${doneSec === 0 ? '0м' : `${Math.max(1, Math.round(doneSec / 60))}м`}`;
+      progressEl.style.display = '';
+    }
+    toggleBtn.textContent = 'Завершить';
+    bar.classList.toggle('expiring', microSlot.running && remaining <= 60);
+    bar.classList.add('running');
+  } else {
+    timeEl.textContent = `Слот ${getMicroSlotWindowMin()}м`;
+    if (progressEl) progressEl.style.display = 'none';
+    toggleBtn.textContent = `Начать слот ${getMicroSlotWindowMin()}м`;
+    bar.classList.remove('expiring', 'running');
+  }
+}
+
+function updateMicroActiveStopwatch() {
+  const el = document.getElementById('microActiveStopwatch');
+  if (!el || !microActiveStep) return;
+  el.textContent = formatMmSs((Date.now() - microActiveStep.activatedAt) / 1000);
+}
+
+function showMicroSlotSummary(options = {}) {
+  const summary = document.getElementById('microSlotSummary');
+  const title = document.getElementById('microSlotSummaryTitle');
+  const body = document.getElementById('microSlotSummaryBody');
+  const extendBtn = document.getElementById('microSlotExtendBtn');
+  if (!summary || !microSlot) return;
+  const doneSec = microSlot.completedSteps.reduce((sum, s) => sum + s.sec, 0);
+  const extendedNote = microSlot.extendedMin > 0 ? ` (+${microSlot.extendedMin}м)` : '';
+  if (title) {
+    title.textContent = `Слот ${microSlot.windowMin}м${extendedNote}: ${microSlot.completedSteps.length} шагов · ${Math.max(microSlot.completedSteps.length ? 1 : 0, Math.round(doneSec / 60))}м`;
+  }
+  if (body) {
+    body.innerHTML = '';
+    const byTask = new Map();
+    microSlot.completedSteps.forEach(s => {
+      const entry = byTask.get(s.taskId) || { text: s.taskText, sec: 0, count: 0 };
+      entry.sec += s.sec;
+      entry.count += 1;
+      byTask.set(s.taskId, entry);
+    });
+    if (byTask.size === 0) {
+      const row = document.createElement('p');
+      row.className = 'micro-slot-summary-row';
+      row.textContent = 'Ни один шаг не закрыт.';
+      body.appendChild(row);
+    }
+    byTask.forEach(entry => {
+      const row = document.createElement('p');
+      row.className = 'micro-slot-summary-row';
+      row.textContent = `${entry.text} — ${Math.max(1, Math.round(entry.sec / 60))}м (${entry.count} ${entry.count === 1 ? 'шаг' : 'шага(ов)'})`;
+      body.appendChild(row);
+    });
+  }
+  if (extendBtn) extendBtn.style.display = options.allowExtend ? '' : 'none';
+  summary.style.display = 'block';
+}
+
+function hideMicroSlotSummary() {
+  const summary = document.getElementById('microSlotSummary');
+  if (summary) summary.style.display = 'none';
+}
+
+// «Выполнить» из конвейера: время шага = время с активации (с капом длиной слота).
+async function completeMicroStep(taskId) {
+  const task = currentTasks.find(t => t.id === taskId);
+  const action = getPrimaryNextAction(task);
+  let durationSec = null;
+  let logText = '';
+  const isActiveStep = !!(task && action && microActiveStep && microActiveStep.stepId === action.id);
+  if (isActiveStep) {
+    if (microSlot) {
+      durationSec = Math.max(1, Math.min(getMicroSlotCapSeconds(), Math.floor((Date.now() - microActiveStep.activatedAt) / 1000)));
+    }
+    logText = String(microActiveStep.logText || '').trim();
+  }
+  await completeWorkflowNextAction(taskId, { durationSec, logText });
+  if (microSlot && task && action && isActiveStep) {
+    if (durationSec) {
+      microSlot.completedSteps.push({ taskId, taskText: task.text, stepId: action.id, text: action.text, sec: durationSec });
+    }
+    microActiveStep = null;
+    updateMicroSlotBar();
+    renderMicroSlotsSection();
+  }
+}
+
+function skipMicroStep(stepId) {
+  microSkippedStepIds.add(stepId);
+  if (microActiveStep && microActiveStep.stepId === stepId) {
+    microActiveStep = null;
+  }
+  renderMicroSlotsSection();
+}
+
+function createMicroFollowUpNextActionForm(task) {
+  const wrap = document.createElement('div');
+  wrap.className = 'micro-follow-up-form';
+  let selectedDeadline = '';
+
+  const actionRow = document.createElement('div');
+  actionRow.className = 'workflow-next-action-form micro-follow-up-action-row';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'workflow-input workflow-next-step-input';
+  input.placeholder = 'Следующее действие';
+  const sizeSelect = createNextStepSizeSelect('15');
+  const kindSelect = createNextStepKindSelect('do');
+  actionRow.appendChild(input);
+  actionRow.appendChild(sizeSelect);
+  actionRow.appendChild(kindSelect);
+  wrap.appendChild(actionRow);
+
+  const deadlineBox = document.createElement('div');
+  deadlineBox.className = 'micro-follow-up-deadline';
+  const deadlineQuestion = document.createElement('div');
+  deadlineQuestion.className = 'micro-follow-up-question';
+  deadlineQuestion.textContent = 'Какой дедлайн у этого следующего шага?';
+  deadlineBox.appendChild(deadlineQuestion);
+
+  const choices = document.createElement('div');
+  choices.className = 'micro-follow-up-deadline-choices';
+  const choiceButtons = [];
+  const setDeadline = (deadline, activeButton) => {
+    selectedDeadline = deadline;
+    deadlineBox.classList.remove('invalid');
+    choiceButtons.forEach(button => button.classList.toggle('active', button === activeButton));
+  };
+  [
+    ['Сегодня', 0],
+    ['Завтра', 1],
+    ['Послезавтра', 2],
+    ['Через неделю', 7]
+  ].forEach(([label, offset]) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'workflow-action-btn secondary micro-deadline-choice';
+    button.textContent = label;
+    button.addEventListener('click', () => setDeadline(getDateStringWithOffset(offset), button));
+    choices.appendChild(button);
+    choiceButtons.push(button);
+  });
+
+  const dateInput = document.createElement('input');
+  dateInput.type = 'date';
+  dateInput.className = 'workflow-date-input micro-follow-up-date';
+  dateInput.addEventListener('change', () => {
+    if (!dateInput.value) return;
+    setDeadline(dateInput.value, null);
+  });
+  choices.appendChild(dateInput);
+  deadlineBox.appendChild(choices);
+  wrap.appendChild(deadlineBox);
+
+  const saveRow = document.createElement('div');
+  saveRow.className = 'workflow-action-bar micro-follow-up-actions';
+  const saveButton = createWorkflowButton('Добавить шаг', 'primary', async () => {
+    if (!selectedDeadline) {
+      deadlineBox.classList.add('invalid');
+      dateInput.focus();
+      return;
+    }
+    await addWorkflowNextAction(task.id, input, sizeSelect, kindSelect, {
+      deadline: selectedDeadline
+    });
+  }, {
+    help: 'Добавит следующий шаг и применит выбранный дедлайн ко всей задаче.'
+  });
+  saveRow.appendChild(saveButton);
+  wrap.appendChild(saveRow);
+
+  input.addEventListener('keydown', async (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    saveButton.click();
+  });
+
+  return wrap;
+}
+
+// Карточка «Что дальше?» после закрытия последнего шага задачи.
+function createNextActionPromptCard(task) {
+  const card = document.createElement('div');
+  card.className = 'workflow-card next-prompt-card';
+  card.setAttribute('data-task-id', task.id);
+
+  const header = document.createElement('div');
+  header.className = 'workflow-card-header';
+  const title = document.createElement('button');
+  title.type = 'button';
+  title.className = 'workflow-card-title';
+  appendTaskTitleWithRecurringMarker(title, task);
+  title.addEventListener('click', () => openWorkflowTask(task.id));
+  header.appendChild(title);
+  card.appendChild(header);
+
+  const message = document.createElement('p');
+  message.className = 'next-prompt-message';
+  message.textContent = 'Шаг выполнен. Что дальше по этой задаче?';
+  card.appendChild(message);
+
+  card.appendChild(createMicroFollowUpNextActionForm(task));
+
+  const bar = document.createElement('div');
+  bar.className = 'workflow-action-bar';
+  bar.appendChild(createWorkflowButton('Задача выполнена', 'primary', async () => {
+    nextActionPromptTaskId = null;
+    await storage.toggleTask(task.id);
+    await refreshAfterWorkflowAction();
+  }, { help: 'Отметит всю задачу выполненной.' }));
+  bar.appendChild(createWorkflowButton('Позже', 'secondary', async () => {
+    nextActionPromptTaskId = null;
+    await refreshAfterWorkflowAction();
+  }, { help: 'Без нового шага задача уйдёт в «Разобрать» — вернёшься к ней при разборе.' }));
+  card.appendChild(bar);
+  return card;
+}
+
+function getPendingNextActionPromptTask() {
+  if (!nextActionPromptTaskId) return null;
+  const task = currentTasks.find(item => item.id === nextActionPromptTaskId);
+  if (!task || task.completed || hasOpenNextAction(task)) {
+    nextActionPromptTaskId = null;
+    return null;
+  }
+  return task;
+}
+
+function renderMicroSlotsSection() {
+  let items = applyMicroSlotQueueOrder(getSortedMicroSlotItems());
+  // Пропущенные в текущем слоте — в конец очереди (runtime-порядок).
+  if (microSkippedStepIds.size > 0) {
+    items = [
+      ...items.filter(item => !microSkippedStepIds.has(item.action.id)),
+      ...items.filter(item => microSkippedStepIds.has(item.action.id))
+    ];
+  }
+  const tasks = items.map(item => item.task);
   setWorkflowStats('microSlotsStats', [
     `действий ${tasks.length}`,
     `5м ${tasks.filter(task => normalizeNextStepSizeForUi(getPrimaryNextAction(task)?.size) === 5).length}`,
-    `15м ${tasks.filter(task => normalizeNextStepSizeForUi(getPrimaryNextAction(task)?.size) === 15).length}`
+    `15м ${tasks.filter(task => normalizeNextStepSizeForUi(getPrimaryNextAction(task)?.size) === 15).length}`,
+    showFutureMicroSlotSteps ? 'будущие вкл' : 'только сегодня'
   ]);
-  setWorkflowListState('microSlotsList', 'microSlotsEmptyState', tasks, 'micro');
+
+  const promptTask = getPendingNextActionPromptTask();
+
+  // Конвейер: prompt после выполненного шага блокирует переход к следующей задаче.
+  // Пока не добавлен новый шаг/дедлайн или задача не закрыта, показываем только его.
+  const slotRunning = isMicroSlotRunning();
+  if (promptTask) {
+    microActiveStep = null;
+  } else if (slotRunning) {
+    const first = items[0] || null;
+    if (!first) {
+      microActiveStep = null;
+    } else if (!microActiveStep || microActiveStep.stepId !== first.action.id) {
+      microActiveStep = { taskId: first.task.id, stepId: first.action.id, activatedAt: Date.now(), logText: '' };
+    }
+  }
+
+  const list = document.getElementById('microSlotsList');
+  const emptyState = document.getElementById('microSlotsEmptyState');
+  if (!list) return;
+  list.innerHTML = '';
+  const visibleItems = promptTask ? [] : (slotRunning ? items.slice(0, 1) : items);
+  const hasContent = visibleItems.length > 0 || promptTask;
+  list.style.display = hasContent ? 'grid' : 'none';
+  if (emptyState) {
+    const message = emptyState.querySelector('p');
+    if (message) {
+      message.textContent = showFutureMicroSlotSteps
+        ? 'Нет коротких следующих действий'
+        : 'Нет коротких шагов на сегодня или просроченных';
+    }
+    emptyState.style.display = hasContent ? 'none' : 'block';
+  }
+
+  visibleItems.forEach((item, index) => {
+    const el = createMicroSlotTaskCard(item.task, {
+      active: slotRunning && index === 0,
+      slotRunning
+    });
+    list.appendChild(el);
+  });
+  if (promptTask) {
+    list.appendChild(createNextActionPromptCard(promptTask));
+  }
+  updateMicroSlotBar();
 }
 
 function renderWaitingSection() {
@@ -2539,6 +3779,7 @@ function renderWaitingSection() {
     `в ожидании ${tasks.length}`,
     dueCount ? `проверить ${dueCount}` : null
   ]);
+  if (!tasks.length && returnToTasksIfCurrentSectionIsEmpty('waiting')) return;
   setWorkflowListState('waitingList', 'waitingEmptyState', tasks, 'waiting');
 }
 
@@ -2558,12 +3799,89 @@ function renderIdeasSection() {
   setWorkflowListState('ideasList', 'ideasEmptyState', tasks, 'idea');
 }
 
-function renderStaleSection() {
-  const tasks = currentTasks
+function getStaleTasks() {
+  return currentTasks
     .filter(task => !task.completed && isWorkflowStaleTask(task))
     .sort((a, b) => getTaskStalenessDays(b) - getTaskStalenessDays(a));
-  setWorkflowStats('staleStats', [`залежалось ${tasks.length}`]);
-  setWorkflowListState('staleList', 'staleEmptyState', tasks, 'stale');
+}
+
+function resolveStaleActiveIndex(tasks) {
+  if (!tasks.length) {
+    staleActiveTaskId = null;
+    staleActiveIndex = 0;
+    return -1;
+  }
+  const activeIndex = tasks.findIndex(task => task.id === staleActiveTaskId);
+  if (activeIndex >= 0) {
+    staleActiveIndex = activeIndex;
+    return activeIndex;
+  }
+  const fallbackIndex = Math.max(0, Math.min(tasks.length - 1, Math.floor(Number(staleActiveIndex) || 0)));
+  staleActiveTaskId = tasks[fallbackIndex].id;
+  staleActiveIndex = fallbackIndex;
+  return fallbackIndex;
+}
+
+function moveStaleCursor(delta) {
+  const tasks = getStaleTasks();
+  if (!tasks.length) return;
+  const currentIndex = resolveStaleActiveIndex(tasks);
+  const nextIndex = Math.max(0, Math.min(tasks.length - 1, currentIndex + delta));
+  staleActiveTaskId = tasks[nextIndex].id;
+  staleActiveIndex = nextIndex;
+  renderStaleSection();
+}
+
+function createStaleReviewNav(tasks, activeIndex) {
+  const nav = document.createElement('div');
+  nav.className = 'movement-review-nav stale-review-nav';
+
+  const progress = document.createElement('div');
+  progress.className = 'movement-review-progress stale-review-progress';
+  progress.textContent = `${activeIndex + 1} из ${tasks.length}`;
+  nav.appendChild(progress);
+
+  const controls = document.createElement('div');
+  controls.className = 'movement-review-controls stale-review-controls';
+
+  const prevButton = createWorkflowButton('Назад', 'secondary', () => moveStaleCursor(-1));
+  prevButton.disabled = activeIndex <= 0;
+  controls.appendChild(prevButton);
+
+  const nextButton = createWorkflowButton('Дальше', 'primary', () => moveStaleCursor(1));
+  nextButton.disabled = activeIndex >= tasks.length - 1;
+  controls.appendChild(nextButton);
+
+  nav.appendChild(controls);
+  return nav;
+}
+
+function createStaleReviewShell(tasks, activeIndex) {
+  const shell = document.createElement('div');
+  shell.className = 'movement-review-shell stale-review-shell';
+  shell.appendChild(createStaleReviewNav(tasks, activeIndex));
+  shell.appendChild(createWorkflowTaskCard(tasks[activeIndex], 'stale'));
+  return shell;
+}
+
+function renderStaleSection() {
+  const tasks = getStaleTasks();
+  setWorkflowStats('staleStats', [`на ревью ${tasks.length}`]);
+
+  const list = document.getElementById('staleList');
+  const emptyState = document.getElementById('staleEmptyState');
+  if (!list) return;
+  list.innerHTML = '';
+  if (!tasks.length) {
+    if (returnToTasksIfCurrentSectionIsEmpty('stale')) return;
+    list.style.display = 'none';
+    if (emptyState) emptyState.style.display = 'block';
+    return;
+  }
+  const activeIndex = resolveStaleActiveIndex(tasks);
+  list.style.display = 'block';
+  if (emptyState) emptyState.style.display = 'none';
+  list.appendChild(createStaleReviewShell(tasks, activeIndex));
 }
 
 function createWorkflowChip(text, className) {
@@ -2585,10 +3903,43 @@ function normalizeWorkflowLink(link) {
   }
 }
 
-function createMicroSlotTaskCard(task) {
+function createMicroActiveLogField(action) {
+  const wrap = document.createElement('label');
+  wrap.className = 'micro-active-log';
+
+  const caption = document.createElement('span');
+  caption.className = 'micro-active-log-caption';
+  caption.textContent = 'Запись в лог';
+  wrap.appendChild(caption);
+
+  const input = document.createElement('textarea');
+  input.className = 'workflow-input micro-active-log-input';
+  input.rows = 2;
+  input.placeholder = 'Что сделал, что выяснил, что важно не потерять';
+  input.value = microActiveStep && microActiveStep.stepId === action.id ? (microActiveStep.logText || '') : '';
+  input.addEventListener('input', () => {
+    if (!microActiveStep || microActiveStep.stepId !== action.id) return;
+    microActiveStep.logText = input.value;
+  });
+  input.addEventListener('keydown', (event) => {
+    event.stopPropagation();
+  });
+  wrap.appendChild(input);
+
+  const hint = document.createElement('span');
+  hint.className = 'micro-active-log-hint';
+  hint.textContent = 'Сохранится при нажатии «Выполнить» и исчезнет вместе с закрытым шагом.';
+  wrap.appendChild(hint);
+
+  return wrap;
+}
+
+function createMicroSlotTaskCard(task, options = {}) {
+  const isActive = options.active === true;
+  const slotRunning = options.slotRunning === true;
   const action = getPrimaryNextAction(task);
   const card = document.createElement('div');
-  card.className = 'micro-slot-card';
+  card.className = `micro-slot-card ${isActive ? 'active' : ''}`.trim();
   card.setAttribute('data-task-id', task.id);
 
   const content = document.createElement('div');
@@ -2613,7 +3964,19 @@ function createMicroSlotTaskCard(task) {
     meta.appendChild(createWorkflowChip(formatNextStepSize(action.size), 'size'));
     meta.appendChild(createWorkflowChip(NEXT_STEP_KIND_LABELS[normalizeNextStepKindForUi(action.kind)], 'kind'));
   }
+  if (isActive) {
+    const stopwatch = document.createElement('span');
+    stopwatch.className = 'workflow-chip micro-active-stopwatch';
+    stopwatch.id = 'microActiveStopwatch';
+    stopwatch.textContent = microActiveStep
+      ? formatMmSs((Date.now() - microActiveStep.activatedAt) / 1000)
+      : '0:00';
+    meta.appendChild(stopwatch);
+  }
   content.appendChild(meta);
+  if (isActive && action) {
+    content.appendChild(createMicroActiveLogField(action));
+  }
   card.appendChild(content);
 
   const controls = document.createElement('div');
@@ -2630,15 +3993,98 @@ function createMicroSlotTaskCard(task) {
     linkButton.setAttribute('aria-label', 'Ссылка. Откроет ссылку из карточки задачи в новой вкладке.');
     controls.appendChild(linkButton);
   }
-  controls.appendChild(createWorkflowButton('Выполнить', 'primary', () => completeWorkflowNextAction(task.id), {
-    help: 'Закроет этот короткий следующий шаг и запишет прогресс в задачу.'
+  controls.appendChild(createWorkflowButton('Выполнить', 'primary', () => completeMicroStep(task.id), {
+    help: slotRunning
+      ? 'Закроет шаг, запишет фактическое время в задачу и активирует следующий шаг очереди.'
+      : 'Закроет этот короткий следующий шаг и запишет прогресс в задачу.'
   }));
+  if (isActive && action) {
+    controls.appendChild(createWorkflowButton('Пропустить', 'secondary', async () => skipMicroStep(action.id), {
+      help: 'Уберёт шаг в конец очереди слота без записи времени.'
+    }));
+  }
   controls.appendChild(createWorkflowButton('Карточка', 'secondary', () => openWorkflowTask(task.id), {
     help: 'Откроет полную карточку. Там можно изменить задачу или оформить ожидание с деталями.'
   }));
   card.appendChild(controls);
 
   return card;
+}
+
+async function updateWorkflowTaskDeadline(task, deadline) {
+  if (!task) return;
+  let nextDeadline = deadline || null;
+  if (nextDeadline === getDateStringWithOffset(0)) {
+    const allTasks = await storage.getTasks();
+    const currentSettings = await storage.getSettings();
+    const baseTasks = allTasks.filter((item) => item.id !== task.id);
+    nextDeadline = await resolveTodayDeadlineWithCapacityGuard({ ...task, deadline: nextDeadline }, baseTasks, currentSettings);
+  }
+  const previousDeadline = task.deadline ? String(task.deadline).split('T')[0] : null;
+  const updates = {
+    deadline: nextDeadline,
+    events: [
+      ...getWorkflowEvents(task),
+      createWorkflowEventForUi('deadline_changed', {
+        from: previousDeadline,
+        to: nextDeadline
+      })
+    ]
+  };
+  if (previousDeadline && previousDeadline !== nextDeadline) {
+    updates.deadlineMoveCount = Math.floor(Number(task.deadlineMoveCount) || 0) + 1;
+  }
+  await storage.updateTask(task.id, updates);
+  await refreshAfterWorkflowAction();
+}
+
+function createReviewDeadlineRow(task) {
+  const row = document.createElement('div');
+  row.className = 'review-deadline-row';
+
+  const label = document.createElement('div');
+  label.className = 'review-deadline-label';
+  label.textContent = 'Дедлайн';
+  row.appendChild(label);
+
+  const quick = document.createElement('div');
+  quick.className = 'review-deadline-quick';
+  [
+    ['Сегодня', 0],
+    ['Завтра', 1],
+    ['Через неделю', 7],
+    ['Через месяц', 30]
+  ].forEach(([labelText, offset]) => {
+    quick.appendChild(createWorkflowButton(labelText, 'secondary', () => updateWorkflowTaskDeadline(task, getDateStringWithOffset(offset)), {
+      help: `Поставит дедлайн: ${labelText.toLowerCase()}.`
+    }));
+  });
+  quick.appendChild(createWorkflowButton('Без даты', 'secondary', () => updateWorkflowTaskDeadline(task, null), {
+    help: 'Уберёт дедлайн: задача останется активной, но без давления даты.'
+  }));
+  row.appendChild(quick);
+
+  const calendar = document.createElement('div');
+  calendar.className = 'review-deadline-calendar';
+  const dateInput = document.createElement('input');
+  dateInput.type = 'date';
+  dateInput.className = 'workflow-date-input';
+  dateInput.value = task.deadline ? String(task.deadline).split('T')[0] : '';
+  calendar.appendChild(dateInput);
+  calendar.appendChild(createWorkflowButton('Поставить дату', 'primary', async () => {
+    const value = dateInput.value.trim();
+    if (!value) {
+      dateInput.classList.add('invalid');
+      return;
+    }
+    dateInput.classList.remove('invalid');
+    await updateWorkflowTaskDeadline(task, value);
+  }, {
+    help: 'Поставит дату из календаря и оставит задачу в текущем рабочем статусе.'
+  }));
+  row.appendChild(calendar);
+
+  return row;
 }
 
 function createWorkflowTaskCard(task, mode) {
@@ -2691,6 +4137,9 @@ function createWorkflowTaskCard(task, mode) {
     }
     card.appendChild(createQuickNextActionRow(task, { requireMetadata: mode === 'stale' || mode === 'triage' }));
     card.appendChild(createWaitingActionRow(task));
+    if (mode === 'stale') {
+      card.appendChild(createReviewDeadlineRow(task));
+    }
   } else if (mode === 'waiting') {
     const waitingMeta = document.createElement('div');
     waitingMeta.className = 'workflow-waiting-meta';
@@ -2730,6 +4179,66 @@ function createQuickNextActionRow(task, options = {}) {
   row.appendChild(sizeSelect);
   row.appendChild(kindSelect);
   row.appendChild(button);
+  return row;
+}
+
+// Экспресс-путь для мелких задач: текст задачи становится следующим шагом (15м, сделать).
+function createTaskIsStepRow(task) {
+  const row = document.createElement('div');
+  row.className = 'workflow-express-row';
+  row.appendChild(createWorkflowButton('Задача = шаг (15м)', 'secondary', async () => {
+    const text = String(task.text || '').trim();
+    if (!text) return;
+    const nextSteps = [...(Array.isArray(task.nextSteps) ? task.nextSteps : [])];
+    nextSteps.push({
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      text,
+      completed: false,
+      order: nextSteps.length,
+      size: 15,
+      kind: 'do'
+    });
+    await storage.updateTask(task.id, {
+      nextSteps,
+      status: 'ready',
+      workflowStatus: 'active',
+      estimateMode: normalizeEstimateModeForBadge(task.estimateMode) === 'none' ? 'fixed' : task.estimateMode,
+      timeEstimateMin: resolveTaskEstimateMinutes(task) || 15,
+      flowSkipCount: 0
+    });
+    await refreshAfterWorkflowAction();
+  }, {
+    help: 'Для мелкой задачи: сам текст задачи становится следующим шагом на 15 минут, карточка сразу готова к работе.'
+  }));
+  return row;
+}
+
+// Развязка «дедлайн переносился 3+ раз»: честная дата, без даты или бэклог.
+function createDeadlineChurnRow(task) {
+  const row = document.createElement('div');
+  row.className = 'workflow-churn-row';
+  const dateInput = document.createElement('input');
+  dateInput.type = 'date';
+  dateInput.className = 'workflow-date-input';
+  dateInput.value = task.deadline ? String(task.deadline).split('T')[0] : '';
+  row.appendChild(dateInput);
+  row.appendChild(createWorkflowButton('Дата честная', 'secondary', async () => {
+    const value = dateInput.value.trim();
+    if (!value) {
+      dateInput.classList.add('invalid');
+      return;
+    }
+    await storage.updateTask(task.id, { deadline: value, deadlineMoveCount: 0 });
+    await refreshAfterWorkflowAction();
+  }, { help: 'Зафиксирует выбранную дату как реальную и обнулит счётчик переносов.' }));
+  row.appendChild(createWorkflowButton('Без даты', 'secondary', async () => {
+    await storage.updateTask(task.id, { deadline: null, deadlineMoveCount: 0 });
+    await refreshAfterWorkflowAction();
+  }, { help: 'Уберёт дедлайн совсем: задача останется активной, без ложного давления даты.' }));
+  row.appendChild(createWorkflowButton('Бэклог', 'secondary', async () => {
+    await storage.updateTask(task.id, { deadlineMoveCount: 0 });
+    await setTaskWorkflowState(task.id, 'backlog', {});
+  }, { help: 'Признает, что сейчас задача не в работе, и уберёт её в бэклог.' }));
   return row;
 }
 
@@ -2781,7 +4290,7 @@ function createWorkflowActionBar(task, mode) {
   const bar = document.createElement('div');
   bar.className = 'workflow-action-bar';
   if (mode === 'micro') {
-    bar.appendChild(createWorkflowButton('Выполнить шаг', 'primary', () => completeWorkflowNextAction(task.id), {
+    bar.appendChild(createWorkflowButton('Выполнить шаг', 'primary', () => completeMicroStep(task.id), {
       help: 'Закроет текущий следующий шаг и запишет прогресс в задачу.'
     }));
     bar.appendChild(createWorkflowButton('Открыть', 'secondary', () => openWorkflowTask(task.id), {
@@ -2792,6 +4301,22 @@ function createWorkflowActionBar(task, mode) {
   if (mode === 'waiting') {
     bar.appendChild(createWorkflowButton('Вернуть в активные', 'primary', () => setTaskWorkflowState(task.id, 'active', { resetSkip: true }), {
       help: 'Снимет ожидание и вернёт задачу в активные. Если карточка готова, она снова появится в задачах и ФЛОУ.'
+    }));
+    bar.appendChild(createWorkflowButton('Пинг 5м', 'secondary', async () => {
+      const target = String(task.waitingFor || '').trim();
+      const nextSteps = [...(Array.isArray(task.nextSteps) ? task.nextSteps : [])];
+      nextSteps.unshift({
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        text: target ? `Пинг: ${target}` : 'Пинг по ожиданию',
+        completed: false,
+        order: -1,
+        size: 5,
+        kind: 'ping'
+      });
+      await storage.updateTask(task.id, { nextSteps, status: 'ready', flowSkipCount: 0 });
+      await setTaskWorkflowState(task.id, 'active', { resetSkip: true });
+    }, {
+      help: 'Вернёт задачу в активные с готовым шагом «пинг» на 5 минут — напомнить тому, кого ждёшь.'
     }));
     bar.appendChild(createWorkflowButton('Бэклог', 'secondary', () => setTaskWorkflowState(task.id, 'backlog', {}), {
       help: 'Уберёт задачу из ожидания в «Бэклог». Она не будет попадать в ФЛОУ.'
@@ -2909,7 +4434,9 @@ async function refreshAfterWorkflowAction() {
 
 async function openWorkflowTask(taskId) {
   if (typeof window.openTaskCard === 'function') {
-    await window.openTaskCard(taskId);
+    await window.openTaskCard(taskId, {
+      goToTasksAfterClose: getCurrentSectionName() !== 'micro-slots'
+    });
   }
 }
 
@@ -2936,11 +4463,15 @@ async function addWorkflowNextAction(taskId, input, sizeSelect, kindSelect, opti
   }
   markWorkflowSelectInvalid(sizeSelect, false);
   markWorkflowSelectInvalid(kindSelect, false);
+  if (nextActionPromptTaskId === taskId) {
+    nextActionPromptTaskId = null;
+  }
   const task = currentTasks.find(item => item.id === taskId);
   if (!task) return;
   const nextSteps = Array.isArray(task.nextSteps) ? [...task.nextSteps] : [];
+  const stepId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
   nextSteps.push({
-    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+    id: stepId,
     text,
     completed: false,
     order: nextSteps.length,
@@ -2953,21 +4484,40 @@ async function addWorkflowNextAction(taskId, input, sizeSelect, kindSelect, opti
     createWorkflowEventForUi('next_action_added', {
       text,
       size: normalizeNextStepSizeForUi(sizeSelect?.value),
-      kind: normalizeNextStepKindForUi(kindSelect?.value)
+      kind: normalizeNextStepKindForUi(kindSelect?.value),
+      deadline: options?.deadline
     })
   ];
-  await storage.updateTask(taskId, {
+  const updates = {
     nextSteps,
     status: 'ready',
     workflowStatus: 'active',
     flowSkipCount: 0,
     events
-  });
+  };
+  if (Object.prototype.hasOwnProperty.call(options || {}, 'deadline')) {
+    let nextDeadline = options.deadline || null;
+    if (nextDeadline === getDateStringWithOffset(0)) {
+      const allTasks = await storage.getTasks();
+      const settings = await storage.getSettings();
+      const baseTasks = allTasks.filter(item => item.id !== taskId);
+      nextDeadline = await resolveTodayDeadlineWithCapacityGuard({ ...task, deadline: nextDeadline }, baseTasks, settings);
+    }
+    const previousDeadline = task.deadline ? String(task.deadline).split('T')[0] : null;
+    updates.deadline = nextDeadline;
+    if (previousDeadline && previousDeadline !== nextDeadline) {
+      updates.deadlineMoveCount = Math.floor(Number(task.deadlineMoveCount) || 0) + 1;
+    }
+    if (nextDeadline === getDateStringWithOffset(0)) {
+      moveMicroStepToQueueEnd(stepId);
+    }
+  }
+  await storage.updateTask(taskId, updates);
   if (input) input.value = '';
   await refreshAfterWorkflowAction();
 }
 
-async function completeWorkflowNextAction(taskId) {
+async function completeWorkflowNextAction(taskId, options = {}) {
   const task = currentTasks.find(item => item.id === taskId);
   if (!task) return;
   const action = getPrimaryNextAction(task);
@@ -2975,10 +4525,14 @@ async function completeWorkflowNextAction(taskId) {
     await openWorkflowTask(taskId);
     return;
   }
+  const durationSec = Number.isFinite(Number(options?.durationSec)) && Number(options.durationSec) > 0
+    ? Math.floor(Number(options.durationSec))
+    : null;
+  const extraLogText = String(options?.logText || '').trim();
   const now = Date.now();
   const nextSteps = (Array.isArray(task.nextSteps) ? task.nextSteps : []).map(step => {
     if (step.id !== action.id) return step;
-    return { ...step, completed: true, completedAt: now };
+    return { ...step, completed: true, completedAt: now, durationSec };
   });
   const events = [
     ...getWorkflowEvents(task),
@@ -2994,7 +4548,23 @@ async function completeWorkflowNextAction(taskId) {
     flowSkipCount: 0,
     events
   });
-  await storage.addLogEntry(taskId, `Выполнен шаг: ${action.text}`);
+  // Время шага уходит в задачу micro-сессией (totalTime/actualFocusSeconds в секундах).
+  if (durationSec) {
+    await storage.addMicroFocusSession(taskId, {
+      durationSeconds: durationSec,
+      stepId: action.id,
+      stepText: action.text
+    });
+  }
+  const durationLabel = durationSec ? ` (${durationSec < 60 ? '<1м' : `${Math.round(durationSec / 60)}м`})` : '';
+  await storage.addLogEntry(taskId, `Выполнен шаг: ${action.text}${durationLabel}`);
+  if (extraLogText) {
+    await storage.addLogEntry(taskId, extraLogText);
+  }
+  // Если открытых шагов не осталось — сразу спрашиваем «Что дальше?»,
+  // чтобы задача не уезжала в разбор и momentum не терялся.
+  const hasMoreOpenSteps = nextSteps.some(step => step && !step.completed && String(step.text || '').trim());
+  nextActionPromptTaskId = hasMoreOpenSteps ? null : taskId;
   await refreshAfterWorkflowAction();
 }
 
@@ -3232,6 +4802,40 @@ function sortTasks(tasks) {
 }
 
 // Счётчик и кнопка триажа в заголовке секции «Просрочено».
+// Прогресс «Фокуса дня»: план (сумма оценок просрочено+сегодня) против capacity.
+function updateFocusCapacityBar(tasks, settings) {
+  const wrap = document.getElementById('focusCapacityWrap');
+  if (!wrap) return;
+  const label = document.getElementById('focusCapacityLabel');
+  const fill = document.getElementById('focusCapacityFill');
+  const activeTasks = (tasks || []).filter(task => !task.completed);
+  if (activeTasks.length === 0) {
+    wrap.style.display = 'none';
+    return;
+  }
+  const planMinutes = activeTasks.reduce((sum, task) => {
+    const estimate = resolveTaskEstimateMinutes(task);
+    if (Number.isFinite(estimate) && estimate > 0) return sum + estimate;
+    const action = getPrimaryNextAction(task);
+    if (action) {
+      const size = normalizeNextStepSizeForUi(action.size);
+      return sum + (size === 'deep' ? 120 : size);
+    }
+    return sum + ROUTINE_DEFAULT_ESTIMATE_MIN;
+  }, 0);
+  const capacity = Math.max(60, Math.floor(Number(settings?.dailyCapacityMin) || 240));
+  const ratio = Math.min(1, planMinutes / capacity);
+  wrap.style.display = 'block';
+  if (label) {
+    label.textContent = `план ${Math.round(planMinutes)}м из ${capacity}м`;
+    label.classList.toggle('over', planMinutes > capacity);
+  }
+  if (fill) {
+    fill.style.width = `${Math.round(ratio * 100)}%`;
+    fill.classList.toggle('over', planMinutes > capacity);
+  }
+}
+
 function updateOverdueSectionHeader(overdueCount) {
   const countBadge = document.getElementById('overdueCountBadge');
   const moveAllBtn = document.getElementById('overdueMoveAllBtn');
@@ -3356,8 +4960,11 @@ function createTaskElement(task, options = {}) {
   const taskDiv = document.createElement('div');
   const normalizedPriority = normalizePriority(task.priority);
   taskDiv.className = `task-item ${task.completed ? 'completed' : ''} priority-${normalizedPriority}`;
+  if (normalizeTaskStatus(task.status) === 'draft') {
+    taskDiv.classList.add('draft');
+  }
   taskDiv.setAttribute('data-task-id', task.id);
-  
+
   const deadlineClass = getDeadlineClass(task.deadline);
   const deadlineText = formatDeadline(task.deadline);
 
@@ -3590,6 +5197,78 @@ function formatTaskTime(totalSeconds) {
   return '0м';
 }
 
+// Диалог «Перевести в Жду»: доступен из полной карточки и контекстного меню.
+let waitingDialogTaskId = null;
+
+function openWaitingDialog(taskId) {
+  const modal = document.getElementById('taskWaitingModal');
+  if (!modal) return;
+  const task = currentTasks.find(item => item.id === taskId);
+  waitingDialogTaskId = taskId;
+  const forInput = document.getElementById('taskWaitingForInput');
+  const untilInput = document.getElementById('taskWaitingUntilInput');
+  const noteInput = document.getElementById('taskWaitingNoteInput');
+  if (forInput) {
+    forInput.value = task?.waitingFor || '';
+    forInput.classList.remove('invalid');
+  }
+  if (untilInput) {
+    untilInput.value = task?.waitingUntil || getDateStringWithOffset(3);
+    untilInput.classList.remove('invalid');
+  }
+  if (noteInput) noteInput.value = task?.waitingNote || '';
+  modal.style.display = 'block';
+  if (forInput) setTimeout(() => forInput.focus(), 0);
+}
+
+function closeWaitingDialog() {
+  const modal = document.getElementById('taskWaitingModal');
+  if (modal) modal.style.display = 'none';
+  waitingDialogTaskId = null;
+}
+
+async function confirmWaitingDialog() {
+  const taskId = waitingDialogTaskId;
+  if (!taskId) return;
+  const forInput = document.getElementById('taskWaitingForInput');
+  const untilInput = document.getElementById('taskWaitingUntilInput');
+  const noteInput = document.getElementById('taskWaitingNoteInput');
+  const waitingFor = String(forInput?.value || '').trim();
+  const waitingUntil = String(untilInput?.value || '').trim();
+  if (forInput) forInput.classList.toggle('invalid', !waitingFor);
+  if (untilInput) untilInput.classList.toggle('invalid', !waitingUntil);
+  if (!waitingFor || !waitingUntil) return;
+  closeWaitingDialog();
+  await setTaskWorkflowState(taskId, 'waiting', {
+    waitingFor,
+    waitingUntil,
+    waitingNote: noteInput?.value || ''
+  });
+  // Даем карточке задачи (в т.ч. в ФЛОУ) перейти к следующей задаче.
+  window.dispatchEvent(new CustomEvent('swiper:task-left-execution', { detail: { taskId } }));
+}
+
+function setupWaitingDialog() {
+  const modal = document.getElementById('taskWaitingModal');
+  if (!modal) return;
+  const cancelBtn = document.getElementById('taskWaitingCancelBtn');
+  const confirmBtn = document.getElementById('taskWaitingConfirmBtn');
+  if (cancelBtn) cancelBtn.addEventListener('click', closeWaitingDialog);
+  if (confirmBtn) confirmBtn.addEventListener('click', () => { confirmWaitingDialog(); });
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeWaitingDialog();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.style.display !== 'none') {
+      e.preventDefault();
+      e.stopPropagation();
+      closeWaitingDialog();
+    }
+  }, true);
+}
+
+window.openWaitingDialog = openWaitingDialog;
+
 // Перенос задачи на сегодня (с проверкой перегруза дня) — используется
 // контекстным меню и быстрой кнопкой «Сегодня» на карточке.
 async function moveTaskToToday(taskId) {
@@ -3600,7 +5279,11 @@ async function moveTaskToToday(taskId) {
   const sourceTask = allTasks.find((task) => task.id === taskId) || {};
   const candidateTask = { ...sourceTask, deadline: today };
   const resolvedDeadline = await resolveTodayDeadlineWithCapacityGuard(candidateTask, baseTasks, currentSettings);
-  await storage.updateTask(taskId, { deadline: resolvedDeadline });
+  const updates = { deadline: resolvedDeadline };
+  if (sourceTask.deadline && resolvedDeadline !== String(sourceTask.deadline).split('T')[0]) {
+    updates.deadlineMoveCount = Math.floor(Number(sourceTask.deadlineMoveCount) || 0) + 1;
+  }
+  await storage.updateTask(taskId, updates);
   await loadTasks();
   renderActiveTasks();
 }
@@ -3621,7 +5304,10 @@ async function moveAllOverdueTasksToToday() {
   }
   if (!confirmed) return;
   for (const task of overdue) {
-    await storage.updateTask(task.id, { deadline: today });
+    await storage.updateTask(task.id, {
+      deadline: today,
+      deadlineMoveCount: Math.floor(Number(task.deadlineMoveCount) || 0) + 1
+    });
   }
   await loadTasks();
   renderActiveTasks();
@@ -3663,6 +5349,17 @@ function setupTaskContextMenu() {
       await window.openTaskCard(taskId);
     }
   });
+
+  const waitBtn = document.getElementById('taskContextWaitBtn');
+  if (waitBtn) {
+    waitBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const taskId = currentContextTaskId;
+      closeTaskContextMenu();
+      if (!taskId) return;
+      openWaitingDialog(taskId);
+    });
+  }
 
   deleteBtn.addEventListener('click', async (e) => {
     e.preventDefault();

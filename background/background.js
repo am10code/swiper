@@ -2,7 +2,7 @@
 importScripts('../shared/logger.js', '../shared/date-utils.js');
 
 // Обработчик клика на иконку расширения
-chrome.action.onClicked.addListener((tab) => {
+chrome.action.onClicked.addListener(() => {
   // Открываем основной раздел расширения в новой вкладке
   chrome.tabs.create({
     url: chrome.runtime.getURL('main.html')
@@ -303,7 +303,7 @@ async function startPomodoroBreak(taskId, durationMinutes) {
 }
 
 // Обработчик сообщений от popup для управления помодоро
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((request, sendResponse) => {
   if (request.action === 'startPomodoro') {
     startPomodoro(request.taskId, request.durationMinutes)
       .then(() => sendResponse({ success: true }))
@@ -411,7 +411,6 @@ async function stopPomodoro(taskId) {
   if (sessionInfo) {
     const startTime = sessionInfo.startTime;
     const now = Date.now();
-    const elapsedMinutes = Math.floor((now - startTime) / 60000); // время в минутах
     
     // Получаем задачу и обновляем общее время
     const data = await chrome.storage.local.get(['tasks']);
@@ -522,4 +521,3 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     checkDeadlines();
   }
 });
-

@@ -65,11 +65,7 @@
         </button>
         <button class="burger-menu-item" data-section="movement">
           <span>🚦</span>
-          <span>Движение</span>
-        </button>
-        <button class="burger-menu-item" data-section="triage">
-          <span>🧭</span>
-          <span>Триаж</span>
+          <span>Разобрать</span>
         </button>
         <button class="burger-menu-item" data-section="micro-slots">
           <span>⚡</span>
@@ -89,7 +85,11 @@
         </button>
         <button class="burger-menu-item" data-section="stale">
           <span>🧊</span>
-          <span>Залежалось</span>
+          <span>Ревью</span>
+        </button>
+        <button class="burger-menu-item" data-section="analytics">
+          <span>📊</span>
+          <span>Инсайты</span>
         </button>
         <button class="burger-menu-item" data-section="cookbooks">
           <span>📖</span>
@@ -123,10 +123,7 @@
               Увеличить время
             </button>
             <button type="button" class="workflow-action-btn secondary" id="flowEmptyMovementBtn">
-              В Движение
-            </button>
-            <button type="button" class="workflow-action-btn secondary" id="flowEmptyTriageBtn">
-              В Триаж
+              Разобрать
             </button>
           </div>
         </div>
@@ -145,7 +142,7 @@
 
     <div class="workflow-section movement-section" id="movementSection" style="display: none;">
       <div class="workflow-section-header">
-        <h2 class="section-title">Движение</h2>
+        <h2 class="section-title">Разобрать</h2>
         <div id="movementStats" class="workflow-stats"></div>
       </div>
       <div id="movementList" class="workflow-card-list"></div>
@@ -169,6 +166,30 @@
       <div class="workflow-section-header">
         <h2 class="section-title">Малые слоты</h2>
         <div id="microSlotsStats" class="workflow-stats"></div>
+      </div>
+      <div class="micro-slot-filter-controls">
+        <label class="micro-slot-future-toggle">
+          <input type="checkbox" id="microSlotFutureToggle" checked>
+          <span>Показывать шаги из будущего</span>
+        </label>
+      </div>
+      <div id="microSlotBar" class="micro-slot-bar">
+        <div class="micro-slot-bar-status">
+          <span id="microSlotTime" class="micro-slot-time"></span>
+          <span id="microSlotProgress" class="micro-slot-progress"></span>
+        </div>
+        <div class="micro-slot-bar-actions">
+          <button type="button" id="microSlotSoundToggleBtn" class="workflow-action-btn secondary micro-slot-sound-btn" aria-pressed="true">Звук вкл</button>
+          <button type="button" id="microSlotToggleBtn" class="workflow-action-btn primary">Начать слот</button>
+        </div>
+      </div>
+      <div id="microSlotSummary" class="micro-slot-summary" style="display: none;">
+        <p id="microSlotSummaryTitle" class="micro-slot-summary-title"></p>
+        <div id="microSlotSummaryBody" class="micro-slot-summary-body"></div>
+        <div class="workflow-action-bar">
+          <button type="button" id="microSlotExtendBtn" class="workflow-action-btn secondary" style="display: none;">Ещё 5 минут</button>
+          <button type="button" id="microSlotFinishBtn" class="workflow-action-btn primary">Завершить</button>
+        </div>
       </div>
       <div id="microSlotsList" class="workflow-card-list compact"></div>
       <div id="microSlotsEmptyState" class="empty-state" style="display: none;">
@@ -211,13 +232,28 @@
 
     <div class="workflow-section" id="staleSection" style="display: none;">
       <div class="workflow-section-header">
-        <h2 class="section-title">Залежалось</h2>
+        <h2 class="section-title">Ревью</h2>
         <div id="staleStats" class="workflow-stats"></div>
       </div>
-      <div id="staleList" class="workflow-card-list compact"></div>
+      <div id="staleList" class="workflow-card-list"></div>
       <div id="staleEmptyState" class="empty-state" style="display: none;">
-        <p>Нет залежавшихся задач</p>
+        <p>Нет задач на ревью</p>
       </div>
+    </div>
+
+    <div class="analytics-section" id="analyticsSection" style="display: none;">
+      <div class="analytics-header">
+        <div>
+          <h2 class="section-title">Инсайты</h2>
+          <p class="analytics-subtitle">История задач, шагов, дедлайнов и времени — чтобы понять, что реально мешает доводить дела до конца.</p>
+        </div>
+        <div class="analytics-period-tabs" id="analyticsPeriodTabs" role="group" aria-label="Период аналитики">
+          <button type="button" class="analytics-period-tab" data-period-days="7">7 дней</button>
+          <button type="button" class="analytics-period-tab" data-period-days="30">30 дней</button>
+          <button type="button" class="analytics-period-tab" data-period-days="all">Все время</button>
+        </div>
+      </div>
+      <div id="analyticsContent" class="analytics-content"></div>
     </div>
 
     <div class="cookbooks-section" id="cookbooksSection" style="display: none;">
@@ -467,12 +503,6 @@
     <!-- Список активных задач -->
     <div class="tasks-section" id="tasksSection">
       <div class="tasks-section-content">
-        <div class="tasks-toolbar">
-          <button id="priorityPromptBtn" class="priority-prompt-inline-btn" title="Сравнить активные задачи" aria-label="Сравнить активные задачи" style="display: none;">
-            <span>Что важнее</span>
-            <span id="priorityPromptCount" class="priority-prompt-count" aria-hidden="true" style="display: none;"></span>
-          </button>
-        </div>
         <div id="tasksCommandCenter" class="tasks-command-center" aria-label="Что делать сейчас"></div>
         <!-- Просрочено -->
         <div id="overdueTasksSection" class="tasks-subsection" style="display: none;">
@@ -486,7 +516,11 @@
         </div>
         <!-- Сегодня -->
         <div id="todayTasksSection" class="tasks-subsection" style="display: none;">
-          <h3 class="subsection-title">Сегодня</h3>
+          <h3 class="subsection-title">Фокус дня</h3>
+          <div id="focusCapacityWrap" class="focus-capacity-wrap" style="display: none;">
+            <span id="focusCapacityLabel" class="focus-capacity-label"></span>
+            <div class="focus-capacity-track"><div id="focusCapacityFill" class="focus-capacity-fill"></div></div>
+          </div>
           <div id="todayTasksList" class="tasks-list">
             <!-- Задачи на сегодня будут добавлены динамически -->
           </div>
@@ -535,6 +569,11 @@
                 </svg>
               </button>
             </div>
+          </div>
+          <div class="add-deadline-chips" role="group" aria-label="Дедлайн новой задачи">
+            <button type="button" class="add-deadline-chip" data-deadline-choice="today">Сегодня</button>
+            <button type="button" class="add-deadline-chip" data-deadline-choice="week">Неделя</button>
+            <button type="button" class="add-deadline-chip active" data-deadline-choice="none">Без даты</button>
           </div>
           <div class="task-options" id="taskOptions" style="display: none;">
             <select id="categorySelect" class="option-select">
@@ -762,6 +801,10 @@
               <div class="next-steps-empty-state" id="nextStepsEmptyState">
                 Добавьте 1–3 ближайших шага, чтобы начать работу
               </div>
+              <div class="next-steps-follow-up" id="nextStepsFollowUpBanner" style="display: none;">
+                <span>Шаг выполнен — что дальше? Добавь следующий шаг, чтобы задача не ушла в разбор.</span>
+                <button type="button" id="nextStepsFollowUpDismissBtn" class="btn-secondary next-steps-toggle-btn">Позже</button>
+              </div>
               <div class="next-steps-list" id="nextStepsList">
                 <!-- Активные шаги -->
                 <div class="next-steps-active" id="nextStepsActive">
@@ -849,10 +892,33 @@
         </div>
         <div id="taskCardOptionsMenu" class="task-context-menu" style="display: none;">
           <button id="taskCardOptionNextWeekBtn">Перенести на следующую неделю</button>
+          <button id="taskCardOptionWaitBtn">Перевести в Жду…</button>
           <button id="taskCardOptionCompleteBtn">Отметить задачу выполненной</button>
           <button id="taskCardOptionEditBtn">Редактировать</button>
           <button id="taskCardOptionResetPriorityWeightBtn" type="button">Сбросить вес задачи</button>
           <button id="taskCardOptionDeleteBtn" class="danger">Удалить</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Перевод задачи в Жду -->
+    <div id="taskWaitingModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <h2>Перевести в Жду</h2>
+        <div class="waiting-modal-fields">
+          <label class="waiting-modal-label">Кого или чего ждёшь
+            <input type="text" id="taskWaitingForInput" class="workflow-input" placeholder="Например: ответ Насти">
+          </label>
+          <label class="waiting-modal-label">Проверить
+            <input type="date" id="taskWaitingUntilInput" class="workflow-date-input">
+          </label>
+          <label class="waiting-modal-label">Заметка
+            <input type="text" id="taskWaitingNoteInput" class="workflow-input" placeholder="Необязательно">
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="taskWaitingCancelBtn" class="btn-secondary">Отмена</button>
+          <button type="button" id="taskWaitingConfirmBtn" class="btn-primary">В Жду</button>
         </div>
       </div>
     </div>
@@ -873,6 +939,7 @@
     <div id="taskContextMenu" class="task-context-menu" style="display: none;">
       <button type="button" id="taskContextTodayBtn">Перенести на сегодня</button>
       <button type="button" id="taskContextOpenBtn">Открыть полную карточку задачи</button>
+      <button type="button" id="taskContextWaitBtn">Перевести в Жду…</button>
       <button type="button" id="taskContextDeleteBtn" class="danger">Удалить</button>
     </div>
   </div>
@@ -883,6 +950,7 @@
   <script src="popup/storage.js"></script>
   <script src="popup/modules/import-export.js"></script>
   <script src="popup/modules/prioritization.js"></script>
+  <script src="popup/modules/analytics.js"></script>
   <script src="popup/popup.js"></script>
   <script src="popup/task-card.js"></script>
 </body>

@@ -64,15 +64,19 @@ function normalizeNextSteps(steps) {
       const text = typeof step.text === 'string' ? step.text.trim() : '';
       if (!text) return null;
       const timestamp = normalizeNonNegativeNumber(step.completedAt, null) || null;
+      // activatedAt — runtime-состояние конвейера, в хранилище не пишем.
+      const { activatedAt, ...rest } = step;
+      const durationSecRaw = Number(rest.durationSec);
       return {
-        ...step,
+        ...rest,
         id: typeof step.id === 'string' && step.id.trim() ? step.id.trim() : createRecordId(),
         text,
         completed: step.completed === true,
         order: Number.isFinite(Number(step.order)) ? Number(step.order) : index,
         size: normalizeNextStepSize(step.size),
         kind: normalizeNextStepKind(step.kind),
-        completedAt: step.completed === true ? timestamp : null
+        completedAt: step.completed === true ? timestamp : null,
+        durationSec: Number.isFinite(durationSecRaw) && durationSecRaw > 0 ? Math.floor(durationSecRaw) : null
       };
     })
     .filter(Boolean)
@@ -248,6 +252,7 @@ class StorageManager {
         taskDisplayMode: 'all', // 'all' или 'today'
         taskCreationMode: 'bottom', // 'bottom' или 'fab'
         activeFlowTimeWindowMin: 30,
+        showFutureMicroSlotSteps: true,
         dailyCapacityMin: 240,
         logCompletedSteps: false,
         globalPomodoroSettings: {
@@ -294,6 +299,9 @@ class StorageManager {
           mergedData.settings.activeFlowTimeWindowMin = normalizeFlowTimeWindowMin(
             mergedData.settings.activeFlowTimeWindowMin
           );
+          if (typeof mergedData.settings.showFutureMicroSlotSteps !== 'boolean') {
+            mergedData.settings.showFutureMicroSlotSteps = this.defaultData.settings.showFutureMicroSlotSteps;
+          }
           mergedData.settings.dailyCapacityMin = normalizeDailyCapacityMin(
             mergedData.settings.dailyCapacityMin
           );
@@ -651,6 +659,9 @@ class StorageManager {
     if (Object.prototype.hasOwnProperty.call(nextSettings, 'dailyCapacityMin')) {
       nextSettings.dailyCapacityMin = normalizeDailyCapacityMin(nextSettings.dailyCapacityMin);
     }
+    if (Object.prototype.hasOwnProperty.call(nextSettings, 'showFutureMicroSlotSteps')) {
+      nextSettings.showFutureMicroSlotSteps = nextSettings.showFutureMicroSlotSteps !== false;
+    }
     const newSettings = { ...data.settings, ...nextSettings };
     chrome.storage.local.set({ settings: newSettings }, () => {});
     return newSettings;
@@ -719,6 +730,32 @@ class StorageManager {
     }
 
     return await this.updateTask(taskId, updates);
+  }
+
+  // Микро-фокус: время выполненного шага из «Малых слотов».
+  // Формат сессии совпадает с продовым помодоро (durationSeconds, секунды),
+  // totalTime/actualFocusSeconds инкрементируются в секундах — без двойного счета.
+  async addMicroFocusSession(taskId, data) {
+    const tasks = await this.getTasks();
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return null;
+    const durationSeconds = Math.max(1, Math.floor(Number(data?.durationSeconds) || 0));
+    const sessions = Array.isArray(task.pomodoroSessions) ? [...task.pomodoroSessions] : [];
+    sessions.push({
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      timestamp: Date.now(),
+      durationSeconds,
+      type: 'micro',
+      stepId: typeof data?.stepId === 'string' && data.stepId ? data.stepId : null,
+      stepText: typeof data?.stepText === 'string' && data.stepText.trim() ? data.stepText.trim() : null
+    });
+    const totalTime = Math.floor(Number(task.totalTime) || 0) + durationSeconds;
+    const actualFocusSeconds = Math.floor(Number(task.actualFocusSeconds) || 0) + durationSeconds;
+    return await this.updateTaskCardData(
+      taskId,
+      { pomodoroSessions: sessions, totalTime, actualFocusSeconds },
+      {}
+    );
   }
 
   // Добавить сессию помодоро
